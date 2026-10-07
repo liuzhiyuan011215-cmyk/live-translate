@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>대학생 밸런스 게임 🎮</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; min-height: 100dvh; display: flex; justify-content: center; align-items: center; padding: 16px; }
+        .card { width: 100%; max-width: 420px; background: #1e293b; border-radius: 24px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 1px solid #334155; text-align: center; }
+        .badge { display: inline-block; background: #3b82f6; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+        h1 { font-size: 22px; font-weight: 800; margin-bottom: 8px; color: #fff; }
+        p.sub { font-size: 14px; color: #94a3b8; margin-bottom: 24px; }
+        .progress-bar { width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-bottom: 24px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); width: 10%; transition: width 0.3s; }
+        .choice-btn { width: 100%; background: #334155; border: 2px solid transparent; border-radius: 16px; padding: 20px 16px; margin-bottom: 12px; color: white; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: left; display: flex; align-items: center; justify-content: space-between; }
+        .choice-btn:active { transform: scale(0.98); background: #475569; }
+        .choice-btn.primary { border-color: #3b82f6; background: rgba(59, 130, 246, 0.15); }
+        .choice-btn.secondary { border-color: #ec4899; background: rgba(236, 72, 153, 0.15); }
+        .choice-btn span.emoji { font-size: 24px; }
+        .choice-btn span.tag { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,0.1); margin-bottom: 4px; display: inline-block; }
+        .choice-text { display: flex; flex-direction: column; }
+        .result-box { display: none; }
+        .result-type { font-size: 28px; font-weight: 900; color: #38bdf8; margin: 16px 0 8px; }
+        .result-desc { font-size: 14px; color: #cbd5e1; line-height: 1.6; margin-bottom: 24px; background: #0f172a; padding: 16px; border-radius: 12px; }
+        .restart-btn { width: 100%; background: #3b82f6; border: none; border-radius: 14px; padding: 16px; color: white; font-size: 16px; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card" id="quizCard">
+        <div class="badge" id="qNum">Q1 / 10</div>
+        <div class="progress-bar"><div class="progress-fill" id="pFill"></div></div>
+        <h1 id="qTitle">질문 로딩 중...</h1>
+        <p class="sub">당신의 선택은?</p>
+        
+        <button class="choice-btn primary" onclick="choose(0)">
+            <div class="choice-text">
+                <span class="tag">OPTION A</span>
+                <span id="optA">선택지 A</span>
+            </div>
+            <span class="emoji" id="emojiA">🅰️</span>
+        </button>
+        <button class="choice-btn secondary" onclick="choose(1)">
+            <div class="choice-text">
+                <span class="tag">OPTION B</span>
+                <span id="optB">선택지 B</span>
+            </div>
+            <span class="emoji" id="emojiB">🅱️</span>
+        </button>
+    </div>
+
+    <div class="card result-box" id="resultCard">
+        <div class="badge">테스트 결과 🎉</div>
+        <div class="result-type" id="resTitle">실용주의 현실러</div>
+        <div class="result-desc" id="resDesc">설명 내용</div>
+        <button class="restart-btn" onclick="restart()">다시 하기 🔄</button>
+    </div>
+
+    <script>
+        const questions = [
+            { q: "과제 마감 30분 전 제출 vs 마감 3일 전 미리 제출", a: "마감 직전 초집중형", b: "미리 끝내고 푹 쉬는 형", ea: "⚡", eb: "🛌" },
+            { q: "아침 9시 전공 필수 강의 vs 저녁 6시 교양 강의", a: "9시 일찍 듣고 끝내기", b: "오후 늦게 느긋하게 가기", ea: "🌅", eb: "🌙" },
+            { q: "팀플 조장 맡기 vs 팀플 묵묵히 버스 타기", a: "답답해서 내가 조장함", b: "묵묵히 시키는 것만 함", ea: "👑", eb: "🤐" },
+            { q: "평생 치킨만 먹기 vs 평생 피자만 먹기", a: "바삭바삭 치킨", b: "치즈폭탄 피자", ea: "🍗", eb: "🍕" },
+            { q: "공부할 때 완전 조용한 독서실 vs 적당한 소음 카페", a: "조용한 독서실/도서관", b: "음악 있는 감성 카페", ea: "🤫", eb: "☕" },
+            { q: "스마트폰 배터리 5% vs 지갑 없이 외출", a: "배터리 5%로 버티기", b: "폰페이 있으니 지갑없이", ea: "🪫", eb: "💳" },
+            { q: "친구가 갑자기 밥 먹자고 번개 vs 3일 전 약속", a: "좋아! 지금 당장 나가기", b: "계획 없는 번개는 사절", ea: "🏃", eb: "📅" },
+            { q: "전공 시험 망치고 학점 C vs 친구한테 빌려준 10만원 떼이기", a: "학점 C 받기", b: "10만원 떼이기", ea: "📉", eb: "💸" },
+            { q: "방학 동안 국내 힐링 여행 vs 빡센 해외 배낭여행", a: "여유로운 힐링 여행", b: "모험 가득 배낭여행", ea: "🏖️", eb: "✈️" },
+            { q: "교수님 질문에 나 혼자 대답하기 vs 아무도 대답 안 해서 10분 침묵", a: "어색해서 내가 대답함", b: "절대 눈 안 마주치고 침묵", ea: "🙋", eb: "👀" }
+        ];
+
+        let cur = 0;
+        let scoreA = 0;
+
+        function render() {
+            if (cur >= questions.length) {
+                showResult();
+                return;
+            }
+            const q = questions[cur];
+            document.getElementById("qNum").textContent = `Q${cur + 1} / 10`;
+            document.getElementById("pFill").style.width = `${((cur + 1) / 10) * 100}%`;
+            document.getElementById("qTitle").textContent = q.q;
+            document.getElementById("optA").textContent = q.a;
+            document.getElementById("optB").textContent = q.b;
+            document.getElementById("emojiA").textContent = q.ea;
+            document.getElementById("emojiB").textContent = q.eb;
+        }
+
+        function choose(choice) {
+            if (choice === 0) scoreA++;
+            cur++;
+            render();
+        }
+
+        function showResult() {
+            document.getElementById("quizCard").style.display = "none";
+            document.getElementById("resultCard").style.display = "block";
+            const title = document.getElementById("resTitle");
+            const desc = document.getElementById("resDesc");
+
+            if (scoreA >= 7) {
+                title.textContent = "🔥 초열정 갓생러";
+                desc.textContent = "계획적이고 추진력이 엄청난 타입! 마감도 빠르고 팀플에서도 주도적으로 나서는 당신, 어디서나 에이스로 통합니다.";
+            } else if (scoreA >= 4) {
+                title.textContent = "⚖️ 밸런스 마스터";
+                desc.textContent = "상황에 맞춰 유연하게 대처하는 센스쟁이! 스트레스 받지 않고 효율적으로 대학 생활을 즐길 줄 아는 실속파입니다.";
+            } else {
+                title.textContent = "🌿 힐링 자유영혼";
+                desc.textContent = "여유와 평화를 사랑하는 마이웨이 타입! 계획에 얽매이지 않고 순간을 즐길 줄 아는 진정한 낭만파 대학생입니다.";
+            }
+        }
+
+        function restart() {
+            cur = 0;
+            scoreA = 0;
+            document.getElementById("quizCard").style.display = "block";
+            document.getElementById("resultCard").style.display = "none";
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>

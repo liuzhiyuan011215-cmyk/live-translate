@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini 3.5 Live Translate · 实时同传 & 翻译</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        *, *::before, *::after { box-sizing: border-box; }
+        
+        :root {
+            --bg-color: #0b0914;
+            --panel-bg: rgba(20, 18, 33, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f0eef6;
+            --text-muted: #8b85a0;
+            --text-dim: #6b6480;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --gradient-accent: linear-gradient(135deg, #a78bfa 0%, #3b82f6 50%, #10b981 100%);
+            --glow-gradient: radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, rgba(59,130,246,0.06) 40%, transparent 70%);
+        }
+
+        body {
+            margin: 0; padding: 0; background: var(--bg-color); color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; height: 100vh; height: 100dvh; display: flex; justify-content: center; align-items: center;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: -250px; left: 50%; transform: translateX(-50%);
+            width: 1000px; height: 600px;
+            background: var(--glow-gradient);
+            pointer-events: none; z-index: 0;
+        }
+
+        #app-container {
+            width: 100%; max-width: 1300px; height: 100vh; height: 100dvh;
+            position: relative; z-index: 10;
+            display: flex; flex-direction: column; overflow: hidden; padding: 10px 18px;
+        }
+
+        /* ===== Unified Ultra-Compact Header (仅占用 46px，给字幕腾出 92%+ 空间) ===== */
+        header.app-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 14px; margin-bottom: 8px; flex-shrink: 0;
+            background: rgba(20, 18, 33, 0.75); border: 1px solid var(--border-color);
+            border-radius: 16px; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            gap: 12px; min-height: 46px;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .logo-glow {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--gradient-accent);
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+        .header-title {
+            font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700;
+            background: linear-gradient(135deg, #f0eef6 0%, #c4b5fd 100%);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            white-space: nowrap;
+        }
+        .header-status {
+            display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04); padding: 3px 8px; border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-yellow); }
+        .status-dot.active { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        .status-dot.error { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+        .header-center {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; justify-content: center;
+        }
+        .header-right {
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+        }
+
+        .compact-lang-group {
+            display: flex; align-items: center; gap: 4px;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 10px; padding: 2px 6px;
+        }
+        .compact-select {
+            background: transparent; color: var(--text-main); border: none;
+            font-size: 12px; font-weight: 500; padding: 4px 2px; cursor: pointer; outline: none;
+        }
+        .compact-select option { background: #181526; color: #f0eef6; }
+        .lang-arrow { color: var(--text-dim); font-size: 11px; user-select: none; }
+
+        .compact-font-ctrl {
+            display: flex; align-items: center; gap: 3px;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 10px; padding: 2px 6px;
+        }
+        .font-btn {
+            background: none; border: none; color: #cbd5e1;
+            font-size: 11px; font-weight: 700; cursor: pointer; padding: 2px 4px; border-radius: 6px; transition: 0.15s;
+        }
+        .font-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+        .font-val {
+            font-size: 11px; font-weight: 600; color: #94a3b8; min-width: 26px; text-align: center;
+        }
+
+        .compact-tool-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09);
+            color: var(--text-muted); font-size: 12px; font-weight: 500; padding: 5px 10px;
+            border-radius: 10px; cursor: pointer; transition: 0.2s; white-space: nowrap;
+        }
+        .compact-tool-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--text-main); }
+        .compact-tool-btn.fs-btn {
+            background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #6ee7b7; font-weight: 600;
+        }
+        .compact-tool-btn.fs-btn:hover { background: rgba(16, 185, 129, 0.3); color: #fff; }
+
+        .btn-compact {
+            padding: 5px 13px !important; font-size: 12px !important; border-radius: 10px !important;
+        }
+
+        .tab-nav-compact {
+            display: flex; gap: 2px; background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 2px;
+        }
+        .tab-nav-compact .tab-btn {
+            padding: 4px 10px; font-size: 12px; border-radius: 8px; margin: 0;
+            border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: 0.2s;
+        }
+        .tab-nav-compact .tab-btn.active {
+            background: rgba(255, 255, 255, 0.12); color: var(--text-main); font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .tab-nav-compact .tab-btn:hover:not(.active) { color: var(--text-main); }
+
+        /* ===== Views ===== */
+        .view-content {
+            position: relative; flex: 1; display: flex; flex-direction: column;
+            overflow: hidden; height: 100%;
+        }
+        .tab-view {
+            display: none; flex-direction: column; width: 100%; height: 100%;
+            opacity: 0; transform: translateY(10px); transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-view.active { display: flex; opacity: 1; transform: translateY(0); }
+
+        /* ===== Config Box & Layouts ===== */
+        .glass-panel {
+            background: var(--panel-bg); border: 1px solid var(--border-color);
+            border-radius: 20px; padding: 18px 20px; backdrop-filter: blur(24px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
+        .config-box { margin-bottom: 14px; flex-shrink: 0; }
+        .row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
+        .row:last-child { margin-bottom: 0; }
+        .flex-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .label { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+        
+        select, input, textarea {
+            background: rgba(255,255,255,0.05); color: var(--text-main);
+            border: 1px solid rgba(255,255,255,0.08); padding: 10px 14px;
+            border-radius: 10px; font-size: 13px; outline: none; transition: 0.2s;
+            font-family: inherit;
+        }
+        select:focus, input:focus, textarea:focus {
+            border-color: rgba(139,92,246,0.4);
+            background: rgba(255,255,255,0.08);
+        }
+        select { cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238b85a0'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; }
+
+        /* Buttons */
+        .btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-main); padding: 10px 16px; border-radius: 12px; font-size: 13px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); }
+        .btn:active { transform: scale(0.97); }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none; box-shadow: 0 4px 16px rgba(124,58,237,0.3); color: #fff;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(124,58,237,0.45);
+            background: linear-gradient(135deg, #9a6ff8, #4f8ff7);
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+            border: none; box-shadow: 0 4px 16px rgba(239,68,68,0.25); color: #fff;
+            display: none;
+        }
+        .btn-stop:hover { background: linear-gradient(135deg, #ff5f5f, #ef4444); }
+
+        /* Sound Wave Animation */
+        .waveform-wrap { display: none; align-items: center; gap: 3px; height: 18px; margin-left: 6px; }
+        .wave-bar { width: 3px; height: 4px; background: var(--accent-primary); border-radius: 2px; }
+        .waveform-wrap.active { display: flex; }
+        .waveform-wrap.active .wave-bar { animation: wave 1.2s infinite ease-in-out; }
+        .waveform-wrap.active .wave-bar:nth-child(1) { animation-delay: 0.1s; }
+        .waveform-wrap.active .wave-bar:nth-child(2) { animation-delay: 0.3s; height: 12px; }
+        .waveform-wrap.active .wave-bar:nth-child(3) { animation-delay: 0.6s; }
+        .waveform-wrap.active .wave-bar:nth-child(4) { animation-delay: 0.2s; height: 14px; }
+        .waveform-wrap.active .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 100% { height: 4px; }
+            50% { height: 16px; }
+        }
+
+        /* ===== Voice Live Output (Subtitles First) ===== */
+        .output-container {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+            padding: 4px 6px 70px 4px; min-height: 0; position: relative;
+            overflow-anchor: auto;
+        }
+        
+        .chat-bubble {
+            background: rgba(24, 21, 38, 0.72); border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px; padding: 12px 18px; animation: bubbleIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(20px); border-left: 4px solid var(--accent-primary);
+            position: relative; display: flex; flex-direction: column; gap: 4px;
+        }
+        
+        .chat-bubble.pinned { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+        
+        @keyframes bubbleIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .chat-bubble .bubble-header {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 11px; color: var(--text-dim); margin-bottom: 2px;
+        }
+        
+        .chat-bubble .src-text {
+            color: #94a3b8; font-size: 13.5px; line-height: 1.5;
+            word-break: break-word; margin-bottom: 3px; padding-right: 32px;
+        }
+        
+        .chat-bubble .tgt-text {
+            color: #ffffff; font-size: var(--sub-font-size, 18px); font-weight: 500;
+            line-height: 1.55; word-break: break-word;
+        }
+        
+        .pin-btn {
+            position: absolute; top: 14px; right: 14px; background: none; border: none;
+            cursor: pointer; font-size: 16px; opacity: 0.35; transition: 0.2s; padding: 4px; color: #f59e0b;
+        }
+        .pin-btn:hover { opacity: 0.8; }
+        .pin-btn.active { opacity: 1; }
+
+        .chat-bubble .bubble-actions { display: flex; gap: 8px; align-self: flex-end; margin-top: 4px; }
+        .action-icon-btn {
+            background: none; border: none; cursor: pointer; color: var(--text-dim);
+            padding: 4px; border-radius: 6px; transition: 0.2s; font-size: 13px;
+        }
+        .action-icon-btn:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.05); }
+
+        .scroll-fab {
+            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff;
+            border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px;
+            font-weight: 500; cursor: pointer; box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+            transition: 0.2s; display: none; z-index: 20;
+        }
+
+        .interim-placeholder {
+            border: 1px dashed rgba(139, 92, 246, 0.3); border-left-style: solid;
+            background: rgba(139, 92, 246, 0.02); color: var(--accent-primary);
+            font-style: italic; display: none;
+        }
+
+        /* ===== Text View ===== */
+        .text-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1;
+            min-height: 0; margin-bottom: 12px;
+        }
+        .text-pane { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        .pane-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        
+        textarea.text-area {
+            width: 100%; flex: 1; min-height: 200px; resize: none;
+            background: rgba(20, 18, 33, 0.4); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 16px; font-size: 15px; line-height: 1.6;
+            color: var(--text-main); outline: none; transition: 0.25s;
+        }
+        textarea.text-area:focus { border-color: rgba(139,92,246,0.3); background: rgba(20,18,33,0.5); }
+        .char-counter { font-size: 11px; color: var(--text-dim); }
+
+        .translation-output-box {
+            background: rgba(30, 27, 45, 0.45); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 16px; flex: 1; overflow-y: auto;
+            position: relative; font-size: 15px; line-height: 1.6; color: var(--text-main);
+        }
+        .translation-actions-bar {
+            display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; flex-shrink: 0;
+        }
+
+        /* ===== Config View ===== */
+        .config-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
+        .config-section { display: flex; flex-direction: column; gap: 12px; }
+        .section-title { font-size: 14px; font-weight: 600; color: var(--text-main); border-left: 3px solid var(--accent-primary); padding-left: 8px; margin-bottom: 6px; }
+        .form-row { display: flex; flex-direction: column; gap: 6px; }
+        .form-row input, .form-row select, .form-row textarea { width: 100%; }
+        
+        .api-key-wrap { position: relative; width: 100%; }
+        .api-key-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--text-muted);
+            font-size: 14px; padding: 2px;
+        }
+
+        /* ===== Utilities / Banner ===== */
+        .toast-banner {
+            background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 12px; padding: 10px 16px; color: #fca5a5; font-size: 12px;
+            line-height: 1.5; margin-bottom: 12px; display: none; animation: fadeIn 0.3s;
+            align-items: center; justify-content: space-between; flex-shrink: 0;
+        }
+        .toast-banner.success {
+            background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); color: #a7f3d0;
+        }
+        .toast-banner button { background: none; border: none; color: inherit; cursor: pointer; font-weight: bold; font-size: 14px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive Layouts */
+        @media (max-width: 768px) {
+            .text-grid { grid-template-columns: 1fr; }
+            #app-container { padding: 6px; height: 100dvh; }
+            header.app-header { flex-wrap: wrap; height: auto; min-height: 44px; padding: 6px 10px; gap: 6px; }
+            .header-center { order: 3; width: 100%; justify-content: space-around; margin-top: 4px; }
+            .logo-glow { width: 10px; height: 10px; }
+            .header-title { font-size: 15px; }
+            .tab-btn { font-size: 12px; padding: 8px 0; }
+            .glass-panel { padding: 10px 12px; }
+            .chat-bubble { padding: 10px 12px; border-radius: 12px; }
+            .chat-bubble .tgt-text { font-size: 15px; }
+            .fullscreen-floating-bar { padding: 4px 10px; gap: 8px; top: 8px; max-width: 96%; }
+            .fs-control-btn { padding: 5px 9px; font-size: 11px; }
+            body.fullscreen-subtitles-active #voiceOutput { padding: 50px 10px 20px 10px !important; }
+        }
+
+        /* Shimmer thinking animation */
+        .thinking-shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%);
+            background-size: 200% 100%;
+            animation: loading-shimmer 1.5s infinite;
+            border-radius: 8px; height: 20px; width: 60%;
+        }
+        /* ===== Fullscreen Subtitle Mode (全屏沉浸大字幕模式) ===== */
+        :root {
+            --sub-font-size: 18px;
+        }
+
+        body.fullscreen-subtitles-active {
+            background: #090710;
+            overflow: hidden;
+        }
+
+        body.fullscreen-subtitles-active::before {
+            display: none;
+        }
+
+        body.fullscreen-subtitles-active header,
+        body.fullscreen-subtitles-active .tab-nav,
+        body.fullscreen-subtitles-active #voice-tab > .config-box,
+        body.fullscreen-subtitles-active #voice-tab > .translation-actions-bar {
+            display: none !important;
+        }
+
+        body.fullscreen-subtitles-active #globalToast {
+            position: fixed;
+            top: 66px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10001;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+
+        body.fullscreen-subtitles-active #app-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        body.fullscreen-subtitles-active .view-content,
+        body.fullscreen-subtitles-active #voice-tab {
+            height: 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        body.fullscreen-subtitles-active #voiceOutput {
+            height: 100% !important;
+            max-height: 100% !important;
+            flex: 1;
+            margin-bottom: 0 !important;
+            padding: 60px 20px 76px 20px !important;
+            width: 100%;
+            max-width: 1200px;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            gap: 10px;
+            scrollbar-width: thin;
+        }
+
+        body.fullscreen-subtitles-active .chat-bubble {
+            background: rgba(22, 19, 36, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 4px solid #8b5cf6;
+            border-radius: 14px;
+            padding: 13px 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            gap: 4px;
+        }
+
+        body.fullscreen-subtitles-active .chat-bubble.pinned {
+            border-left-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        body.fullscreen-subtitles-active .chat-bubble .tgt-text {
+            font-size: var(--sub-font-size, 18px) !important;
+            line-height: 1.55 !important;
+            font-weight: 500 !important;
+            color: #ffffff !important;
+            letter-spacing: 0.01em;
+        }
+
+        body.fullscreen-subtitles-active .chat-bubble .src-text {
+            font-size: 13.5px !important;
+            line-height: 1.5 !important;
+            color: #94a3b8 !important;
+            margin-bottom: 4px !important;
+        }
+
+        body.fullscreen-subtitles-active .chat-bubble .bubble-header {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        /* Floating Back-to-Top / New Subtitles FAB */
+        .scroll-to-latest-fab {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45), 0 0 0 1px rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .scroll-to-latest-fab.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .scroll-to-latest-fab:hover {
+            background: linear-gradient(135deg, #9f75ff 0%, #4f46e5 100%);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.6);
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .scroll-to-latest-fab:active {
+            transform: translateX(-50%) translateY(1px);
+        }
+
+        .scroll-fab-badge {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 7px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Floating Top Bar in Fullscreen Mode */
+        .fullscreen-floating-bar {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 15, 30, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            padding: 6px 16px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255,255,255,0.06);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 10000;
+            transition: all 0.25s ease;
+            user-select: none;
+            max-width: 95vw;
+        }
+
+        body.fullscreen-subtitles-active .fullscreen-floating-bar {
+            display: flex;
+            animation: fsBarSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fsBarSlideDown {
+            from { opacity: 0; transform: translate(-50%, -18px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        .fs-status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .fs-status-pill .status-dot {
+            width: 8px;
+            height: 8px;
+        }
+
+        .fs-divider {
+            width: 1px;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .fs-control-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+            padding: 6px 13px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .fs-control-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .fs-control-btn.btn-stop {
+            background: rgba(239, 68, 68, 0.22);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+        }
+        .fs-control-btn.btn-stop:hover {
+            background: rgba(239, 68, 68, 0.38);
+            color: #fff;
+        }
+
+        .fs-control-btn.btn-start {
+            background: rgba(16, 185, 129, 0.22);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+        }
+        .fs-control-btn.btn-start:hover {
+            background: rgba(16, 185, 129, 0.38);
+            color: #fff;
+        }
+
+        .fs-font-ctrl {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 5px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .fs-font-btn {
+            background: none;
+            border: none;
+            color: #cbd5e1;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 3px 8px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: 0.15s;
+        }
+
+        .fs-font-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        .fs-font-val {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .fs-exit-btn {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        .fs-exit-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══════ FULLSCREEN SUBTITLES FLOATING BAR ═══════ -->
+    <div id="fullscreenFloatingBar" class="fullscreen-floating-bar">
+        <div class="fs-status-pill">
+            <div class="status-dot" id="fsStatusDot"></div>
+            <span id="fsStatusText">未开始</span>
+        </div>
+
+        <button id="fsListeningToggleBtn" class="fs-control-btn btn-start" onclick="toggleListeningFromFS()">
+            🎙️ 开始同传
+        </button>
+
+        <div class="fs-divider"></div>
+
+        <div class="fs-font-ctrl" title="调整字幕字号">
+            <button class="fs-font-btn" onclick="adjustSubFontSize(-2)" title="缩小字号 (A-)">A-</button>
+            <span class="fs-font-val" id="fsFontDisplay">18px</span>
+            <button class="fs-font-btn" onclick="adjustSubFontSize(2)" title="放大字号 (A+)">A+</button>
+        </div>
+
+        <div class="fs-divider"></div>
+
+        <button class="fs-control-btn" onclick="clearVoiceHistory()" title="清空字幕记录">🧹 清空</button>
+        <button class="fs-control-btn" onclick="exportVoiceHistory()" title="导出笔记文件">💾 导出</button>
+
+        <div class="fs-divider"></div>
+
+        <button class="fs-control-btn fs-exit-btn" onclick="toggleFullscreenSubtitles(false)" title="退出大字幕模式 (快捷键 Esc)">✕ 退出大字幕 (Esc)</button>
+    </div>
+
+    <!-- ═══════ SCROLL TO LATEST FLOATING FAB ═══════ -->
+    <button id="scrollToLatestFab" class="scroll-to-latest-fab" onclick="scrollToLatestSubtitles()" title="点击一键回到最上方最新字幕">
+        <span>⬆️ 回到最新字幕</span>
+        <span id="unreadSubCount" class="scroll-fab-badge" style="display: none;">0</span>
+    </button>
+
+    <div id="app-container">
+        <!-- ═══════ UNIFIED ULTRA-COMPACT HEADER (仅占用 46px，给字幕腾出 92%+ 空间) ═══════ -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-glow"></div>
+                <div class="header-title">Gemini 3.5 同传</div>
+                <div class="header-status">
+                    <div class="status-dot" id="headerStatusDot"></div>
+                    <span id="headerStatusText">就绪</span>
+                </div>
+            </div>
+
+            <!-- Voice Controls (Single sleek row) -->
+            <div class="header-center" id="headerVoiceControls">
+                <button id="voiceStartBtn" class="btn btn-primary btn-compact" onclick="startVoiceInterpreting()">🎙️ 开始同传</button>
+                <button id="voiceStopBtn" class="btn btn-stop btn-compact" onclick="stopVoiceInterpreting()" style="display: none;">⏹️ 停止</button>
+                
+                <div class="waveform-wrap" id="voiceWaveform">
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                    <div class="wave-bar"></div>
+                </div>
+
+                <div class="compact-lang-group">
+                    <select id="voiceSourceLang" class="compact-select" title="源语言">
+                        <option value="auto" selected>🌍 自动识别</option>
+                        <option value="ko">韩语 (Korean)</option>
+                        <option value="zh">中文 (Chinese)</option>
+                        <option value="en">英语 (English)</option>
+                        <option value="ja">日语 (Japanese)</option>
+                        <option value="vi">越南语 (Vietnamese)</option>
+                    </select>
+                    <span class="lang-arrow">➔</span>
+                    <select id="voiceTargetLang" class="compact-select" title="翻译目标">
+                        <option value="zh-Hans" selected>中文 (Chinese)</option>
+                        <option value="ko">韩语 (Korean)</option>
+                        <option value="en">英语 (English)</option>
+                        <option value="ja">日语 (Japanese)</option>
+                        <option value="vi">越南语 (Vietnamese)</option>
+                        <option value="fr">法语 (French)</option>
+                        <option value="es">西班牙语 (Spanish)</option>
+                        <option value="de">德语 (German)</option>
+                    </select>
+                </div>
+
+                <div class="compact-font-ctrl" title="调整字幕字号">
+                    <button class="font-btn" onclick="adjustSubFontSize(-1)" title="缩小字号 (A-)">A-</button>
+                    <span class="font-val" id="headerFontVal">18px</span>
+                    <button class="font-btn" onclick="adjustSubFontSize(1)" title="放大字号 (A+)">A+</button>
+                </div>
+
+                <button class="compact-tool-btn" onclick="clearVoiceHistory()" title="清空记录">🧹 清空</button>
+                <button class="compact-tool-btn" onclick="exportVoiceHistory()" title="导出笔记">💾 导出</button>
+                <button id="voiceFullscreenBtn" class="compact-tool-btn fs-btn" onclick="toggleFullscreenSubtitles(true)" title="隐藏顶部栏，进入纯净大字幕模式">⛶ 纯净视口</button>
+            </div>
+
+            <!-- Right: Tab Switcher -->
+            <div class="header-right">
+                <div class="tab-nav-compact">
+                    <button class="tab-btn active" onclick="switchTab('voice-tab', this)">🎙️ 同传</button>
+                    <button class="tab-btn" onclick="switchTab('text-tab', this)">📝 文本</button>
+                    <button class="tab-btn" onclick="switchTab('config-tab', this)">⚙️ 设置</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ═══════ TOAST BANNER (ERRORS/INFO) ═══════ -->
+        <div class="toast-banner" id="globalToast">
+            <span id="toastText">提示信息</span>
+            <button onclick="dismissToast()">✕</button>
+        </div>
+
+        <!-- ═══════ VIEWPORTS ═══════ -->
+        <div class="view-content">
+            
+            <!-- 🎙️ VOICE LIVE TRANSLATOR VIEW (WebSocket Gemini Live API) -->
+            <div id="voice-tab" class="tab-view active">
+                <!-- Live Log Container (占满整屏，字幕是绝对主角！) -->
+                <div id="voiceOutput" class="output-container">
+                    
+                    <!-- Welcome Box -->
+                    <div class="chat-bubble" id="voiceWelcomeBubble" style="border-left-color: var(--accent-secondary)">
+                        <div class="bubble-header">✨ Gemini 3.5 Live 实时同传</div>
+                        <div class="tgt-text" style="font-size: 14px; font-weight: normal; color: var(--text-muted); line-height: 1.6;">
+                            点击上方 <strong>“🎙️ 开始同传”</strong> 授权麦克风即可开始！说话停顿 1.5 秒自动断句开启新气泡，支持整段「AI 智能精校」。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 📦 历史防打扰静默缓冲区 (用户向下滚动查看旧弹幕时，新弹幕在此静默缓冲，彻底杜绝主屏震动) -->
+                <div id="pendingVoiceContainer" style="display: none;"></div>
+            </div>
+
+            <!-- 📝 TEXT TRANSLATOR VIEW -->
+            <div id="text-tab" class="tab-view">
+                <div class="glass-panel config-box">
+                    <div class="row">
+                        <div class="flex-group">
+                            <span class="label">🤖 翻译引擎：</span>
+                            <select id="textEngineSelect" style="max-width: 260px;">
+                                <option value="bai" selected>⚡ 免费 Qwen-3.8-Flash (秒级极速)</option>
+                                <option value="gemini">🌐 Google Gemini REST</option>
+                            </select>
+
+                            <span class="label" style="margin-left: 12px;">🌐 目标语言：</span>
+                            <select id="textTargetLang" onchange="toggleTextToneSelector()">
+                                <option value="简体中文" selected>中文 (Chinese)</option>
+                                <option value="한국어">韩语 (Korean)</option>
+                                <option value="English">英语 (English)</option>
+                                <option value="日本語">日语 (Japanese)</option>
+                                <option value="Français">法语 (French)</option>
+                                <option value="Español">西班牙语 (Spanish)</option>
+                            </select>
+
+                            <select id="textKoreanToneSelector" style="display: none;">
+                                <option value="해요체 (日常敬语，-아/어요结尾，礼貌亲切)">🤝 日常敬语 ( 해요체 )</option>
+                                <option value="해라체/반말 (非敬语/半语，适合朋友/晚辈)">😎 半语/非敬语 ( 반말 )</option>
+                                <option value="하십시오체 (最高敬语，-습니다/ㅂ니다结尾，正式严谨)">👔 正式敬语 ( 하십시오체 )</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex-group">
+                            <label class="label" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="autoTranslateCheck" checked style="width: auto; height: auto; margin: 0;"> 
+                                输入时自动翻译 (防抖)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-grid">
+                    <!-- Input Pane -->
+                    <div class="text-pane">
+                        <div class="pane-title">
+                            <span>输入原文</span>
+                            <span class="char-counter" id="textCharCount">0 / 5000</span>
+                        </div>
+                        <textarea id="textInput" class="text-area" placeholder="键入、粘贴要翻译的文字..." oninput="handleTextInput(event)" maxlength="5000"></textarea>
+                    </div>
+
+                    <!-- Output Pane -->
+                    <div class="text-pane">
+                        <div class="pane-title">
+                            <span>翻译结果</span>
+                            <span class="char-counter" id="textStatusText">就绪</span>
+                        </div>
+                        <div class="translation-output-box" id="textOutputContainer">
+                            <span style="color: var(--text-dim); font-style: italic;">等待输入...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Bar -->
+                <div class="translation-actions-bar">
+                    <button class="btn" id="textPlayTtsBtn" onclick="speakTextOutput()" disabled>🔊 读出结果</button>
+                    <button class="btn" id="textCopyBtn" onclick="copyTextOutput()" disabled>📋 复制结果</button>
+                    <button class="btn btn-primary" id="textTranslateBtn" onclick="triggerTextTranslation()">🚀 翻译</button>
+                </div>
+            </div>
+
+            <!-- ⚙️ SETTINGS VIEW -->
+            <div id="config-tab" class="tab-view">
+                <div class="glass-panel" style="flex: 1; overflow-y: auto;">
+                    <div class="config-scroll">
+                        
+                        <div class="config-section">
+                            <div class="section-title">API 核心配置</div>
+                            
+                            <div class="form-row">
+                                <label class="label">Gemini API Key</label>
+                                <div class="api-key-wrap">
+                                    <input type="password" id="cfgApiKey" placeholder="已内置默认 Key (可自定义覆盖)" value="">
+                                    <button class="api-key-toggle" onclick="toggleApiKeyVisibility(this)">👁️</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label class="label">API Base URL (如需反代或镜像站可修改此项)</label>
+                                <input type="text" id="cfgBaseUrl" placeholder="https://generativelanguage.googleapis.com" value="https://generativelanguage.googleapis.com">
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="section-title">语音同传配置 (WebSocket Live API)</div>
+                            
+                            <div class="form-row">
+                                <label class="label">同传模型 (Live Model)</label>
+                                <select id="cfgLiveModel">
+                                    <option value="models/gemini-3.5-live-translate-preview" selected>gemini-3.5-live-translate-preview (官方专用同传翻译模型)</option>
+                                    <option value="models/gemini-2.0-flash">gemini-2.0-flash (经典实时流模型)</option>
+                                    <option value="models/gemini-3.5-flash">gemini-3.5-flash (3.5代 Flash 模型)</option>
+                                    <option value="models/gemini-2.5-flash">gemini-2.5-flash (2.5代 Flash 模型)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <label class="label">🎧 同传声音输出模式</label>
+                                <select id="voiceOutputMode">
+                                    <option value="text_only" selected>🎬 实时字幕 (无声/仅文本) - 推荐上课/讲座</option>
+                                    <option value="audio_text">🗣️ 语音播报 (文本+声音)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="section-title">文本翻译配置 (REST 请求)</div>
+                            
+                            <div class="form-row">
+                                <label class="label">文本模型 (REST Model)</label>
+                                <select id="cfgModel">
+                                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                                </select>
+                            </div>
+
+                        <div class="config-section">
+                            <div class="section-title">🎁 Qwen 通义千问精校与学术术语提取配置 (OpenAI 兼容接口)</div>
+                            
+                            <div class="form-row">
+                                <label class="label">Qwen API Key (阿里云百炼 DashScope 官方 Key 已内置)</label>
+                                <div class="api-key-wrap">
+                                    <input type="password" id="cfgBaiApiKey" placeholder="已内置默认 Key (可自定义覆盖)" value="">
+                                    <button class="api-key-toggle" onclick="toggleApiKeyVisibility(this, 'cfgBaiApiKey')">👁️</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <label class="label">Qwen API Base URL (阿里云百炼兼容端点)</label>
+                                <input type="text" id="cfgBaiBaseUrl" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" value="https://dashscope.aliyuncs.com/compatible-mode/v1">
+                            </div>
+
+                            <div class="form-row">
+                                <label class="label">默认精校/翻译大模型 (Model)</label>
+                                <select id="cfgBaiModel">
+                                    <option value="qwen3.8-flash" selected>Qwen-3.8-Flash (⚡ 官方免费 · 秒级极速响应 · 唯一锁定)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="section-title">文本翻译系统提示词 (System Prompt)</div>
+                            <div class="form-row">
+                                <textarea id="cfgSystemPrompt" rows="3" style="resize: vertical; font-size: 12px; line-height: 1.5;"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; justify-content: flex-end; gap: 10px;">
+                            <button class="btn" onclick="resetConfigToDefault()">恢复默认</button>
+                            <button class="btn btn-primary" onclick="saveConfigSettings()">💾 保存并应用设置</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════ JAVASCRIPT CODE ═══════ -->
+    <script>
+        // ══════════════════════════════════════
+        // GLOBAL ERROR HANDLERS (DEBUG WINDOW)
+        // ══════════════════════════════════════
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("Global Error Caught:", message, "at line", lineno, "col", colno);
+            showToast(`🔴 脚本运行错误: ${message} (行 ${lineno})`, "error");
+            if (typeof stopVoiceInterpreting === 'function') {
+                stopVoiceInterpreting();
+            }
+            return false;
+        };
+
+        window.onunhandledrejection = function(event) {
+            console.error("Unhandled Promise Rejection:", event.reason);
+            showToast(`🔴 异步任务异常: ${event.reason}`, "error");
+            if (typeof stopVoiceInterpreting === 'function') {
+                stopVoiceInterpreting();
+            }
+        };
+
+        // ══════════════════════════════════════
+        // DEFAULT CONFIGURATIONS
+        // ══════════════════════════════════════
+        const DEFAULT_CONFIG = {
+            apiKey: "",
+            baseUrl: "https://generativelanguage.googleapis.com",
+            model: "gemini-2.0-flash",
+            liveModel: "models/gemini-3.5-live-translate-preview",
+            systemPrompt: "你是一个专业的实时翻译助手。请将用户输入的文本准确、流利地翻译成目标语言，保留原始的感情色彩和专有名词。遇到计算机、网络或软件工程的专有名词，必须保留原始英文（如 Database, API, Git 等）。除了直接返回翻译后的内容，绝对不要输出任何自我介绍、解释、注意点或其它多余文本。",
+            // Qwen / DashScope OpenAI-Compatible LLM Configuration
+            baiApiKey: "",
+            baiBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            baiModel: "qwen3.8-flash"
+        };
+
+        // App State
+        let config = { ...DEFAULT_CONFIG };
+        let ws = null;
+        let isListening = false;
+        let sessionNotesText = "【Gemini 3.5 Live Translate 同传笔记】\n\n";
+        let autoTranslateTimer = null;
+        let connectionTimeout = null;
+        let currentCardId = null;
+        let subtitleTimer = null;
+        
+        // Audio stream buffers & contexts
+        let audioCtx = null;
+        let micStream = null;
+        let sourceNode = null;
+        let processorNode = null;
+
+        // ══════════════════════════════════════
+        // PCM PLAYER FOR REAL-TIME AUDIO PLAYBACK
+        // ══════════════════════════════════════
+        class PCMPlayer {
+            constructor(sampleRate = 24000) {
+                this.sampleRate = sampleRate;
+                this.playbackCtx = null;
+                this.gainNode = null;
+                this.nextStartTime = 0;
+                this._muted = false;
+            }
+
+            init() {
+                if (!this.playbackCtx) {
+                    this.playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: this.sampleRate });
+                    this.gainNode = this.playbackCtx.createGain();
+                    this.gainNode.connect(this.playbackCtx.destination);
+                    this.gainNode.gain.value = this._muted ? 0 : 1;
+                }
+                this.nextStartTime = this.playbackCtx.currentTime;
+            }
+
+            mute() {
+                this._muted = true;
+                if (this.gainNode) {
+                    this.gainNode.gain.value = 0;
+                }
+            }
+
+            unmute() {
+                this._muted = false;
+                if (this.gainNode) {
+                    this.gainNode.gain.value = 1;
+                }
+            }
+
+            play(base64Data) {
+                if (!this.playbackCtx) this.init();
+                if (this.playbackCtx.state === 'suspended') {
+                    this.playbackCtx.resume();
+                }
+
+                try {
+                    const rawBinary = window.atob(base64Data);
+                    const bufferLength = rawBinary.length;
+                    const rawBuffer = new ArrayBuffer(bufferLength);
+                    const view = new Uint8Array(rawBuffer);
+                    for (let i = 0; i < bufferLength; i++) {
+                        view[i] = rawBinary.charCodeAt(i);
+                    }
+
+                    const int16Array = new Int16Array(rawBuffer);
+                    const float32Array = new Float32Array(int16Array.length);
+                    for (let i = 0; i < int16Array.length; i++) {
+                        float32Array[i] = int16Array[i] / 32768.0;
+                    }
+
+                    const audioBuffer = this.playbackCtx.createBuffer(1, float32Array.length, this.sampleRate);
+                    audioBuffer.getChannelData(0).set(float32Array);
+
+                    const sourceNode = this.playbackCtx.createBufferSource();
+                    sourceNode.buffer = audioBuffer;
+                    sourceNode.connect(this.gainNode || this.playbackCtx.destination);
+
+                    const currentTime = this.playbackCtx.currentTime;
+                    if (this.nextStartTime < currentTime) {
+                        this.nextStartTime = currentTime;
+                    }
+                    sourceNode.start(this.nextStartTime);
+                    this.nextStartTime += audioBuffer.duration;
+                } catch (e) {
+                    console.error("PCM 音频播放错误:", e);
+                }
+            }
+
+            stop() {
+                if (this.playbackCtx) {
+                    this.playbackCtx.close().catch(() => {});
+                    this.playbackCtx = null;
+                    this.gainNode = null;
+                }
+                this.nextStartTime = 0;
+            }
+        }
+
+        const pcmPlayer = new PCMPlayer(24000);
+
+        // ══════════════════════════════════════
+        // INITIALIZATION
+        // ══════════════════════════════════════
+        window.addEventListener('DOMContentLoaded', () => {
+            loadConfigFromStorage();
+            updateConfigUI();
+            validateAPIConfig();
+            initSmartScrollListener();
+            try {
+                const savedFontSize = localStorage.getItem('gemini_sub_font_size');
+                if (savedFontSize) {
+                    currentSubFontSize = parseInt(savedFontSize, 10);
+                    if (!isNaN(currentSubFontSize)) {
+                        document.documentElement.style.setProperty('--sub-font-size', `${currentSubFontSize}px`);
+                        const disp = document.getElementById('fsFontDisplay');
+                        if (disp) disp.textContent = `${currentSubFontSize}px`;
+                        const headerDisp = document.getElementById('headerFontVal');
+                        if (headerDisp) headerDisp.textContent = `${currentSubFontSize}px`;
+                    }
+                }
+            } catch (e) {}
+        });
+
+        // ══════════════════════════════════════
+        // STORAGE & CONFIG
+        // ══════════════════════════════════════
+        function loadConfigFromStorage() {
+            try {
+                const saved = localStorage.getItem('gemini_translator_config');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    config = { ...DEFAULT_CONFIG, ...parsed };
+                }
+            } catch (e) {
+                console.error("加载配置失败，使用默认配置", e);
+            }
+            if (!config.apiKey || config.apiKey.trim() === '') {
+                config.apiKey = DEFAULT_CONFIG.apiKey;
+            }
+            if (!config.baiApiKey || config.baiApiKey.trim() === '' || config.baiBaseUrl === "https://api.b.ai/v1") {
+                config.baiApiKey = DEFAULT_CONFIG.baiApiKey;
+                config.baiBaseUrl = DEFAULT_CONFIG.baiBaseUrl;
+                try { localStorage.setItem('gemini_translator_config', JSON.stringify(config)); } catch(e){}
+            }
+            config.baiModel = 'qwen3.8-flash';
+        }
+
+        function saveConfigSettings() {
+            config.apiKey = document.getElementById('cfgApiKey').value.trim();
+            config.baseUrl = document.getElementById('cfgBaseUrl').value.trim().replace(/\/$/, ""); 
+            config.liveModel = document.getElementById('cfgLiveModel').value;
+            config.model = document.getElementById('cfgModel').value;
+            config.systemPrompt = document.getElementById('cfgSystemPrompt').value.trim();
+            
+            // B.ai settings
+            config.baiApiKey = document.getElementById('cfgBaiApiKey').value.trim();
+            config.baiBaseUrl = document.getElementById('cfgBaiBaseUrl').value.trim().replace(/\/$/, "");
+            config.baiModel = document.getElementById('cfgBaiModel').value;
+
+            try {
+                localStorage.setItem('gemini_translator_config', JSON.stringify(config));
+                showToast("✅ 设置已永久保存在本地！以后打开自动免密使用", "success");
+                validateAPIConfig();
+            } catch (e) {
+                showToast("⚠️ 保存到本地浏览器缓存失败", "error");
+            }
+        }
+
+        function resetConfigToDefault() {
+            if (confirm("确定要恢复到初始的默认设置吗？")) {
+                config = { ...DEFAULT_CONFIG };
+                updateConfigUI();
+                localStorage.removeItem('gemini_translator_config');
+                showToast("⚙️ 配置已重置为默认", "success");
+                validateAPIConfig();
+            }
+        }
+
+        function updateConfigUI() {
+            document.getElementById('cfgApiKey').value = config.apiKey || '';
+            document.getElementById('cfgBaseUrl').value = config.baseUrl || '';
+            document.getElementById('cfgLiveModel').value = config.liveModel || 'models/gemini-3.5-live-translate-preview';
+            document.getElementById('cfgModel').value = config.model || 'gemini-2.0-flash';
+            document.getElementById('cfgSystemPrompt').value = config.systemPrompt || '';
+            
+            // B.ai UI
+            if (document.getElementById('cfgBaiApiKey')) document.getElementById('cfgBaiApiKey').value = config.baiApiKey || '';
+            if (document.getElementById('cfgBaiBaseUrl')) document.getElementById('cfgBaiBaseUrl').value = config.baiBaseUrl || '';
+            if (document.getElementById('cfgBaiModel')) document.getElementById('cfgBaiModel').value = config.baiModel || 'qwen3.8-flash';
+        }
+
+        function validateAPIConfig() {
+            const dot = document.getElementById('headerStatusDot');
+            const text = document.getElementById('headerStatusText');
+            
+            if (!config.apiKey) {
+                dot.className = 'status-dot error';
+                text.textContent = '未配置 Key';
+            } else {
+                dot.className = 'status-dot active';
+                text.textContent = 'API 就绪';
+            }
+        }
+
+        function toggleApiKeyVisibility(btn, inputId = 'cfgApiKey') {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🔒';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+
+        // ══════════════════════════════════════
+        // NAVIGATION
+        // ══════════════════════════════════════
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-view').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeView = document.getElementById(tabId);
+            activeView.classList.add('active');
+            btnElement.classList.add('active');
+
+            const headerVoiceControls = document.getElementById('headerVoiceControls');
+            if (headerVoiceControls) {
+                headerVoiceControls.style.display = (tabId === 'voice-tab') ? 'flex' : 'none';
+            }
+        }
+
+        // ══════════════════════════════════════
+        // TOAST NOTIFICATIONS
+        // ══════════════════════════════════════
+        function showToast(message, type = "error") {
+            const toast = document.getElementById('globalToast');
+            const toastText = document.getElementById('toastText');
+            
+            toastText.textContent = message;
+            toast.className = 'toast-banner'; 
+            
+            if (type === 'success') {
+                toast.classList.add('success');
+            }
+            
+            toast.style.display = 'flex';
+        }
+
+        function dismissToast() {
+            document.getElementById('globalToast').style.display = 'none';
+        }
+
+        function getWebSocketUrl() {
+            let base = config.baseUrl.trim().replace(/\/+$/, ""); 
+            base = base.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+            return `${base}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${config.apiKey}`;
+        }
+
+        // ══════════════════════════════════════
+        // 🎙️ VOICE LIVE TRANSLATE (GEMINI LIVE WEBSOCKET API)
+        // ══════════════════════════════════════
+        let userIntentListening = false;
+        let reconnectTimer = null;
+        let reconnectCount = 0;
+
+        async function startVoiceInterpreting() {
+            if (!config.apiKey) {
+                showToast("❌ 请先到 [设置] 页面填写您的 Gemini API Key！", "error");
+                switchTab('config-tab', document.querySelectorAll('.tab-btn')[2]);
+                return;
+            }
+
+            const welcome = document.getElementById('voiceWelcomeBubble');
+            if (welcome) welcome.style.display = 'none';
+
+            userIntentListening = true;
+            reconnectCount = 0;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+
+            setVoiceUIConnecting();
+            dismissToast();
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                }
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+                
+                const outputMode = document.getElementById('voiceOutputMode').value;
+                pcmPlayer.init();
+                if (outputMode !== 'audio_text') {
+                    pcmPlayer.mute();
+                } else {
+                    pcmPlayer.unmute();
+                }
+
+                if (!micStream) {
+                    await startAudioMicrophoneStreaming();
+                }
+
+                connectWebSocket();
+
+            } catch (err) {
+                console.error("Failed to start voice session:", err);
+                showToast(`❌ 麦克风录音权限被拒，或音频初始化失败: ${err.message}`);
+                stopVoiceInterpreting();
+            }
+        }
+
+        function connectWebSocket() {
+            if (!userIntentListening) return;
+
+            if (ws) {
+                try { ws.close(); } catch(e) {}
+                ws = null;
+            }
+
+            const wsUrl = getWebSocketUrl();
+            console.log("Connecting to WebSocket URL:", wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            connectionTimeout = setTimeout(() => {
+                if (ws && ws.readyState === WebSocket.CONNECTING) {
+                    if (userIntentListening) {
+                        scheduleAutoReconnect("连接超时，正在重试...");
+                    } else {
+                        showToast("⚠️ 连接超时：建立 WebSocket 连接失败，请检查网络或代理。", "error");
+                        stopVoiceInterpreting();
+                    }
+                }
+            }, 6000);
+
+            ws.onopen = () => {
+                clearTimeout(connectionTimeout);
+                reconnectCount = 0;
+                sendSetupMessage();
+            };
+
+            ws.onmessage = async (event) => {
+                let msgText;
+                if (event.data instanceof Blob) {
+                    msgText = await event.data.text();
+                } else {
+                    msgText = event.data;
+                }
+                handleWebSocketMessage(msgText);
+            };
+
+            ws.onerror = (e) => {
+                console.error("WebSocket Error:", e);
+                if (userIntentListening) {
+                    scheduleAutoReconnect("网络微动，正在自动续连...");
+                } else {
+                    showToast("⚠️ 连线异常：无法建立 WebSocket 流会话，请确认网络连通性", "error");
+                    stopVoiceInterpreting();
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log("WebSocket Closed:", event);
+                clearTimeout(connectionTimeout);
+                
+                if (userIntentListening) {
+                    // Google Live API reaches session limit (~10-15min) or idle -> Auto-reconnect seamlessly!
+                    scheduleAutoReconnect("🔄 会话轮转中，已自动无缝续连...");
+                } else {
+                    showToast("ℹ️ 会话已结束，连接已断开", "success");
+                    stopVoiceInterpreting();
+                }
+            };
+        }
+
+        function scheduleAutoReconnect(noticeText) {
+            if (!userIntentListening) return;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+
+            reconnectCount++;
+            console.log(`Auto-reconnecting session (attempt #${reconnectCount})...`);
+            
+            showToast(noticeText || "🔄 正在自动续连...", "success");
+            setVoiceUIListening(true);
+
+            reconnectTimer = setTimeout(() => {
+                if (userIntentListening) {
+                    connectWebSocket();
+                }
+            }, 800);
+        }
+
+        function sendSetupMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+            const targetLang = document.getElementById('voiceTargetLang').value;
+            const modelName = "models/gemini-3.5-live-translate-preview";
+
+            const setupMsg = {
+                setup: {
+                    model: modelName,
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        translationConfig: {
+                            targetLanguageCode: targetLang,
+                            echoTargetLanguage: true
+                        }
+                    },
+                    inputAudioTranscription: {},
+                    outputAudioTranscription: {}
+                }
+            };
+
+            console.log("Sending Setup Frame for Gemini 3.5 Live Translate:", setupMsg);
+            ws.send(JSON.stringify(setupMsg));
+        }
+
+        function handleWebSocketMessage(rawMessage) {
+            try {
+                const data = JSON.parse(rawMessage);
+                
+                // 1. Setup Complete
+                if (data.setupComplete || data.setup_complete) {
+                    isListening = true;
+                    setVoiceUIListening(true);
+                    dismissToast();
+                    return;
+                }
+
+                const serverContent = data.serverContent || data.server_content;
+                if (serverContent) {
+                    const modelTurn = serverContent.modelTurn || serverContent.model_turn;
+                    
+                    // 2. Play Audio outputs & print Text outputs
+                    if (modelTurn && modelTurn.parts) {
+                        for (const part of modelTurn.parts) {
+                            if (part.text) {
+                                appendRealTimeTranslation(part.text);
+                            }
+                            const inlineData = part.inlineData || part.inline_data;
+                            if (inlineData && inlineData.data) {
+                                pcmPlayer.play(inlineData.data);
+                            }
+                        }
+                    }
+
+                    // 3. Handle Speech Recognition Transcriptions (ASR input / output)
+                    const inputTranscription = serverContent.inputTranscription || serverContent.input_transcription;
+                    if (inputTranscription && inputTranscription.text) {
+                        updateSourceSpeech(inputTranscription.text);
+                    }
+
+                    const outputTranscription = serverContent.outputTranscription || serverContent.output_transcription;
+                    if (outputTranscription && outputTranscription.text) {
+                        appendRealTimeTranslation(outputTranscription.text);
+                    }
+
+                    const isTurnComplete = serverContent.turnComplete || serverContent.turn_complete;
+                    if (isTurnComplete) {
+                        onTurnComplete();
+                    }
+                }
+
+                // Fallback: Check for transcriptions in root
+                const fallbackInput = data.inputTranscription || data.input_transcription;
+                if (fallbackInput && fallbackInput.text && (!serverContent || !(serverContent.inputTranscription || serverContent.input_transcription))) {
+                    updateSourceSpeech(fallbackInput.text);
+                }
+
+            } catch (e) {
+                console.error("JSON parsing error:", e, rawMessage);
+            }
+        }
+
+        async function startAudioMicrophoneStreaming() {
+            if (!micStream) {
+                micStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+            }
+
+            if (!processorNode && audioCtx) {
+                const source = audioCtx.createMediaStreamSource(micStream);
+                processorNode = audioCtx.createScriptProcessor(2048, 1, 1);
+                
+                processorNode.onaudioprocess = (e) => {
+                    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                    
+                    const inputData = e.inputBuffer.getChannelData(0); 
+                    
+                    const pcmBuffer = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        let sample = inputData[i];
+                        if (sample > 1) sample = 1;
+                        else if (sample < -1) sample = -1;
+                        pcmBuffer[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                    }
+                    
+                    const base64Audio = arrayBufferToBase64(pcmBuffer.buffer);
+                    
+                    const audioInputMsg = {
+                        realtimeInput: {
+                            mediaChunks: [
+                                {
+                                    mimeType: "audio/pcm;rate=16000",
+                                    data: base64Audio
+                                }
+                            ]
+                        }
+                    };
+                    ws.send(JSON.stringify(audioInputMsg));
+                };
+
+                source.connect(processorNode);
+                processorNode.connect(audioCtx.destination);
+                sourceNode = source;
+            }
+        }
+
+        function stopVoiceInterpreting() {
+            userIntentListening = false;
+            isListening = false;
+            setVoiceUIListening(false);
+            
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            if (connectionTimeout) {
+                clearTimeout(connectionTimeout);
+                connectionTimeout = null;
+            }
+            if (subtitleTimer) {
+                clearTimeout(subtitleTimer);
+                subtitleTimer = null;
+            }
+
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+
+            pcmPlayer.stop();
+
+            if (processorNode) {
+                processorNode.disconnect();
+                processorNode = null;
+            }
+            if (sourceNode) {
+                sourceNode.disconnect();
+                sourceNode = null;
+            }
+            if (micStream) {
+                micStream.getTracks().forEach(track => track.stop());
+                micStream = null;
+            }
+            
+            currentCardId = null;
+        }
+
+        function setVoiceUIConnecting() {
+            const startBtn = document.getElementById('voiceStartBtn');
+            const stopBtn = document.getElementById('voiceStopBtn');
+            
+            startBtn.disabled = true;
+            startBtn.textContent = "⏳ 建立连接中...";
+            stopBtn.style.display = 'none';
+
+            const fsText = document.getElementById('fsStatusText');
+            if (fsText) fsText.textContent = '连接中...';
+            const fsBtn = document.getElementById('fsListeningToggleBtn');
+            if (fsBtn) {
+                fsBtn.disabled = true;
+                fsBtn.innerHTML = '⏳ 连接中...';
+            }
+        }
+
+        function setVoiceUIListening(listening) {
+            const startBtn = document.getElementById('voiceStartBtn');
+            const stopBtn = document.getElementById('voiceStopBtn');
+            const waveform = document.getElementById('voiceWaveform');
+
+            startBtn.disabled = false;
+            startBtn.textContent = "🎙️ 开始同传";
+
+            if (listening) {
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+                waveform.classList.add('active');
+            } else {
+                startBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'none';
+                waveform.classList.remove('active');
+            }
+
+            if (typeof updateFSFloatingBarState === 'function') {
+                updateFSFloatingBarState();
+            }
+        }
+
+        function getOrCreateLogCard() {
+            const container = document.getElementById('voiceOutput');
+            
+            if (!currentCardId) {
+                currentCardId = 'speech-' + Date.now();
+                const card = document.createElement('div');
+                card.className = 'chat-bubble';
+                card.id = currentCardId;
+                
+                const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                card.innerHTML = `
+                    <button class="pin-btn" onclick="togglePin(this)" title="置顶标记">☆</button>
+                    <div class="bubble-header">
+                        <span>⏱️ ${timeStr}</span>
+                    </div>
+                    <div class="src-text" style="color: #a78bfa; font-style: italic;">正在聆听...</div>
+                    <div class="tgt-text" style="color: #6b6480; font-size: 15px;"><div class="thinking-shimmer" style="width: 40%"></div></div>
+                    <div class="bubble-actions" style="display: none;">
+                        <button class="action-icon-btn refine-btn" onclick="manualRefineWithBai('${currentCardId}')" style="background: rgba(139,92,246,0.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); padding: 3px 8px; border-radius: 6px; font-size: 12px; display: inline-flex; align-items: center; gap: 3px; cursor: pointer;" title="调用大模型 (DeepSeek / GLM / Qwen) 结合整段上下文进行学术精校">✨ AI 智能精校</button>
+                        <button class="action-icon-btn" onclick="speakText('${currentCardId}-tgt')" title="朗读">🔊</button>
+                        <button class="action-icon-btn" onclick="copyBubbleText('${currentCardId}-tgt')" title="复制">📋</button>
+                    </div>
+                `;
+                
+                if (isUserBrowsingHistory && container.scrollTop > 40) {
+                    // 用户正在向下翻看历史字幕！
+                    // 新气泡放入静默缓冲容器，主视口 DOM 零变动、零重排，主屏彻底告别一切震动/抖动！
+                    const pendingContainer = document.getElementById('pendingVoiceContainer');
+                    if (pendingContainer) {
+                        pendingContainer.appendChild(card);
+                    } else {
+                        container.prepend(card);
+                    }
+
+                    unreadHistoryCount++;
+                    updateScrollFabBadge();
+                } else {
+                    // 用户正在顶部实时观看
+                    container.prepend(card);
+                    container.scrollTop = 0;
+                }
+            }
+            return currentCardId;
+        }
+
+        function resetSubtitleTimer() {
+            if (subtitleTimer) clearTimeout(subtitleTimer);
+            subtitleTimer = setTimeout(() => {
+                onTurnComplete();
+            }, 1500); // 停顿 1.5 秒后自动开启新气泡
+        }
+
+        function updateSourceSpeech(text) {
+            const cardId = getOrCreateLogCard();
+            const card = document.getElementById(cardId);
+            if (card) {
+                const srcEl = card.querySelector('.src-text');
+                const clean = text.replace(/\n+/g, ' ').trim();
+                if (!clean) return;
+
+                const prev = srcEl.dataset.fullText || '';
+                // Cumulative or delta handling
+                if (clean.includes(prev) || clean.length >= prev.length) {
+                    srcEl.dataset.fullText = clean;
+                    srcEl.textContent = clean;
+                } else {
+                    const merged = (prev ? prev + ' ' : '') + clean;
+                    srcEl.dataset.fullText = merged;
+                    srcEl.textContent = merged;
+                }
+
+                srcEl.style.fontStyle = 'normal';
+                srcEl.style.color = '#8b85a0';
+
+                resetSubtitleTimer();
+            }
+        }
+
+        function appendRealTimeTranslation(text) {
+            const cardId = getOrCreateLogCard();
+            const card = document.getElementById(cardId);
+            if (card) {
+                const tgtEl = card.querySelector('.tgt-text');
+                if (tgtEl.querySelector('.thinking-shimmer')) {
+                    tgtEl.innerHTML = ''; 
+                    tgtEl.id = `${cardId}-tgt`;
+                    tgtEl.style.color = '#f0eef6';
+                    tgtEl.style.fontSize = '';
+                }
+                
+                tgtEl.textContent += text.replace(/\n+/g, ' ');
+                
+                const actions = card.querySelector('.bubble-actions');
+                if (actions) actions.style.display = 'flex';
+                
+                const srcText = card.querySelector('.src-text').textContent;
+                sessionNotesText = sessionNotesText.replace(new RegExp(`\\[原文\\] ${srcText}\\n\\[翻译\\].*\\n\\n$`, 'm'), ''); 
+                sessionNotesText += `[原文] ${srcText}\n[翻译] ${tgtEl.textContent}\n\n`;
+
+                resetSubtitleTimer();
+            }
+        }
+
+        function onTurnComplete() {
+            if (currentCardId) {
+                const finishedId = currentCardId;
+                const card = document.getElementById(finishedId);
+                if (card) {
+                    const srcEl = card.querySelector('.src-text');
+                    if (srcEl && srcEl.textContent === '正在聆听...') {
+                        srcEl.style.display = 'none';
+                    }
+                    // Pure client-side zero-cost correction (consumes ZERO API quota!)
+                    applyClientSideTermCorrections(finishedId);
+                }
+            }
+            currentCardId = null; 
+        }
+
+        // Pure client-side dictionary replacement (100% Free, ZERO extra API calls, ZERO quota consumed)
+        function applyClientSideTermCorrections(cardId) {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            const srcEl = card.querySelector('.src-text');
+            const tgtEl = card.querySelector('.tgt-text');
+            if (!srcEl || !tgtEl) return;
+
+            let text = tgtEl.textContent;
+            const srcText = srcEl.textContent;
+
+            // Common classroom/academic homophone corrections:
+            // 1. "厨师假设" / "主厨假设" (误听 셰프 / 세부) -> "具体假设"
+            if (text.includes("厨师假设") || text.includes("主厨假设") || (srcText.includes("셰프") && (text.includes("考试") || text.includes("理解") || text.includes("课")))) {
+                text = text.replace(/厨师假设|主厨假设/g, "细部假设");
+                text = text.replace(/厨师/g, "具体/细部");
+            }
+
+            // 2. "性格" (在有考试/分数/课堂语境下纠正为 "成绩")
+            if (text.includes("性格") && (text.includes("考试") || text.includes("分数") || text.includes("学分") || text.includes("考核") || text.includes("评价"))) {
+                text = text.replace(/性格/g, "成绩");
+            }
+
+            if (text !== tgtEl.textContent) {
+                tgtEl.textContent = text;
+            }
+        }
+
+        // Manual On-Demand Refinement using Qwen-3.8-Flash (100% Free, Ultra-Fast & Reliable)
+        async function manualRefineWithBai(cardId) {
+            const apiKey = config.baiApiKey || "";
+            const baseUrl = (config.baiBaseUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
+            const modelName = "qwen3.8-flash";
+
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            const srcEl = card.querySelector('.src-text');
+            const tgtEl = card.querySelector('.tgt-text');
+            const btn = card.querySelector('.refine-btn');
+            
+            const rawKorean = (srcEl ? srcEl.dataset.fullText || srcEl.textContent : '').trim();
+            const rawChinese = (tgtEl ? tgtEl.textContent : '').trim();
+
+            if (!rawKorean || rawKorean === '正在聆听...') {
+                showToast("⚠️ 未获取到有效原始韩文，无法精校", "error");
+                return;
+            }
+
+            const originalBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+            }
+
+            // Live seconds counter on button
+            let elapsed = 0;
+            if (btn) btn.innerHTML = `⏳ Qwen 极速精校中 (0s)...`;
+            const timerId = setInterval(() => {
+                elapsed++;
+                if (btn) {
+                    if (elapsed < 8) {
+                        btn.innerHTML = `⏳ Qwen 思考分析中 (${elapsed}s)...`;
+                    } else if (elapsed < 20) {
+                        btn.innerHTML = `⏳ Qwen 学术推敲与纠错 (${elapsed}s)...`;
+                    } else {
+                        btn.innerHTML = `⏳ Qwen 正在组织译文 (${elapsed}s)...`;
+                    }
+                }
+            }, 1000);
+
+            try {
+                const prompt = `你是一个顶级的大学专业课程同传审校专家。当前场景为大学专业授课（涉及课堂教学、学术考核、考试、计算机或专业理论等）。
+请根据整段完整的韩语原文，对刚才实时流式输出的初版中文译文进行【深度语义纠错与学术级精校】。
+
+【核心纠错要求】：
+1. 彻底纠正流式语音识别中的同音错别字与语境荒谬词（例如：在课程语境中，把 '세부 가정(细部/具体假设)' 误听为 '셰프(厨师)'、把 '성적(成绩)' 误翻为 '性格'、把 '학점(学分)' 等学术术语误判，必须结合整段上下文纠正为地道准确的学术含义）。
+2. 使整句中文表达更通顺、自然、严谨。
+3. 严格要求：只输出最终精校后的中文译文，绝对不要输出任何解释、前后缀或多余符号。
+
+【韩语原文】: ${rawKorean}
+【初版译文】: ${rawChinese}`;
+
+                let resultText = "";
+                for (let attempt = 1; attempt <= 2; attempt++) {
+                    if (attempt > 1) {
+                        await new Promise(r => setTimeout(r, 1500));
+                    }
+
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                    try {
+                        const res = await fetch(`${baseUrl}/chat/completions`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${apiKey}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                model: modelName,
+                                messages: [
+                                    { role: "user", content: prompt }
+                                ],
+                                thinking: {
+                                    type: "disabled"
+                                },
+                                stream: false,
+                                temperature: 0.2
+                            }),
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            const content = data.choices?.[0]?.message?.content?.trim();
+                            if (content) {
+                                resultText = content.replace(/^["']|["']$/g, '');
+                                break;
+                            }
+                        } else {
+                            console.warn(`Qwen attempt ${attempt} returned HTTP ${res.status}`);
+                        }
+                    } catch (e) {
+                        clearTimeout(timeoutId);
+                        console.warn(`Qwen attempt ${attempt} failed:`, e);
+                    }
+                }
+
+                clearInterval(timerId);
+
+                if (resultText) {
+                    tgtEl.textContent = resultText;
+                    
+                    // Add badge in header
+                    const header = card.querySelector('.bubble-header');
+                    if (header && !header.querySelector('.polished-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'polished-badge';
+                        badge.style.cssText = 'color: #34d399; font-size: 11px; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3); padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500;';
+                        badge.textContent = `✨ Qwen 已精校`;
+                        header.appendChild(badge);
+                    }
+
+                    if (btn) {
+                        btn.innerHTML = `✓ 已精校`;
+                        btn.style.color = '#34d399';
+                        btn.style.borderColor = 'rgba(52,211,153,0.4)';
+                    }
+                    showToast(`✨ Qwen 精校完成！已结合上下文修正错别字`, "success");
+                } else {
+                    throw new Error("接口当前拥挤或超时，请稍候重试");
+                }
+
+            } catch (err) {
+                clearInterval(timerId);
+                console.error("Manual refine error:", err);
+                showToast(`❌ 精校未完成: ${err.message}`, "error");
+                if (btn) btn.innerHTML = originalBtnHtml;
+            } finally {
+                clearInterval(timerId);
+                if (btn) {
+                    btn.style.opacity = '1';
+                    setTimeout(() => { btn.disabled = false; }, 800);
+                }
+            }
+        }
+
+        function togglePin(btn) {
+            const b = btn.closest('.chat-bubble');
+            const p = b.classList.toggle('pinned');
+            btn.textContent = p ? '★' : '☆';
+            btn.classList.toggle('active', p);
+        }
+
+        function clearVoiceHistory() {
+            if (confirm("确定要清空当前的同传记录吗？")) {
+                const container = document.getElementById('voiceOutput');
+                container.innerHTML = '';
+                const pendingContainer = document.getElementById('pendingVoiceContainer');
+                if (pendingContainer) pendingContainer.innerHTML = '';
+                sessionNotesText = "【Gemini 3.5 Live Translate 同传笔记】\n\n";
+                currentCardId = null;
+                isUserBrowsingHistory = false;
+                unreadHistoryCount = 0;
+                updateScrollFabVisibility(false);
+                showToast("🧹 同传记录已清空", "success");
+            }
+        }
+
+        function exportVoiceHistory() {
+            if (sessionNotesText.trim() === "【Gemini 3.5 Live Translate 同传笔记】") {
+                showToast("🙅 没有可供导出的记录！");
+                return;
+            }
+            
+            const blob = new Blob([sessionNotesText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+            
+            a.href = url;
+            a.download = `Gemini同传笔记_${dateStr}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function speakText(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.textContent;
+            if (!text) return;
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const targetLang = document.getElementById('voiceTargetLang').value;
+            utterance.lang = targetLang;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function copyBubbleText(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            navigator.clipboard.writeText(el.textContent).then(() => {
+                showToast("📋 翻译内容已复制到剪贴板！", "success");
+            });
+        }
+
+        // ══════════════════════════════════════
+        // 📝 TEXT TRANSLATOR (REST API & B.AI FREE LLM)
+        // ══════════════════════════════════════
+        function toggleTextToneSelector() {
+            const lang = document.getElementById('textTargetLang').value;
+            const toneSelector = document.getElementById('textKoreanToneSelector');
+            toneSelector.style.display = lang === '한국어' ? 'inline-block' : 'none';
+        }
+
+        function handleTextInput(e) {
+            const count = e.target.value.length;
+            document.getElementById('textCharCount').textContent = `${count} / 5000`;
+            
+            if (document.getElementById('autoTranslateCheck').checked) {
+                if (autoTranslateTimer) clearTimeout(autoTranslateTimer);
+                autoTranslateTimer = setTimeout(() => {
+                    triggerTextTranslation();
+                }, 600);
+            }
+        }
+
+        async function triggerTextTranslation() {
+            const text = document.getElementById('textInput').value.trim();
+            const outputContainer = document.getElementById('textOutputContainer');
+            const statusText = document.getElementById('textStatusText');
+            const ttsBtn = document.getElementById('textPlayTtsBtn');
+            const copyBtn = document.getElementById('textCopyBtn');
+
+            if (!text) {
+                outputContainer.innerHTML = '<span style="color: var(--text-dim); font-style: italic;">等待输入...</span>';
+                statusText.textContent = "就绪";
+                ttsBtn.disabled = true;
+                copyBtn.disabled = true;
+                return;
+            }
+
+            statusText.textContent = "翻译中...";
+            outputContainer.innerHTML = '<div class="thinking-shimmer" style="width: 80%; margin-top: 6px;"></div>';
+
+            const engine = document.getElementById('textEngineSelect')?.value || 'bai';
+            const targetLang = document.getElementById('textTargetLang').value;
+            let systemInstructionText = config.systemPrompt || "你是一个专业的翻译助手。";
+            
+            if (targetLang === '한국어') {
+                const tone = document.getElementById('textKoreanToneSelector').value;
+                systemInstructionText += `\n目标语言是韩语，请必须严格使用【${tone}】语气体裁进行翻译。`;
+            } else {
+                systemInstructionText += `\n目标语言是：${targetLang}。`;
+            }
+
+            if (engine === 'bai') {
+                // 1. Qwen / DashScope OpenAI-Compatible LLM (Qwen-3.8-Flash)
+                const apiKey = config.baiApiKey || "";
+                const baseUrl = (config.baiBaseUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
+                const modelName = "qwen3.8-flash";
+
+                try {
+                    const resp = await fetch(`${baseUrl}/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: modelName,
+                            messages: [
+                                { role: "system", content: systemInstructionText + "\n只输出最终译文，不要多余解释。" },
+                                { role: "user", content: text }
+                            ],
+                            thinking: {
+                                type: "disabled"
+                            },
+                            stream: false,
+                            temperature: 0.3
+                        })
+                    });
+
+                    if (!resp.ok) {
+                        const errJson = await resp.json().catch(() => ({}));
+                        throw new Error(errJson.error?.message || `HTTP ${resp.status}`);
+                    }
+
+                    const data = await resp.json();
+                    const translatedText = data.choices?.[0]?.message?.content || "";
+
+                    if (translatedText) {
+                        outputContainer.textContent = translatedText.trim();
+                        statusText.textContent = "完成 (Qwen)";
+                        ttsBtn.disabled = false;
+                        copyBtn.disabled = false;
+                    } else {
+                        outputContainer.innerHTML = '<span style="color: var(--accent-red);">未能获取翻译结果</span>';
+                        statusText.textContent = "错误";
+                    }
+                } catch (e) {
+                    console.error("B.ai translation error:", e);
+                    outputContainer.innerHTML = `<span style="color: var(--accent-red);">翻译失败: ${e.message}</span>`;
+                    statusText.textContent = "失败";
+                    showToast(`❌ B.ai 翻译失败: ${e.message}`);
+                }
+            } else {
+                // 2. Google Gemini REST API
+                if (!config.apiKey) {
+                    showToast("❌ 请先到 [设置] 页面填写您的 Gemini API Key！", "error");
+                    switchTab('config-tab', document.querySelectorAll('.tab-btn')[2]);
+                    return;
+                }
+
+                const payload = {
+                    contents: [
+                        { parts: [{ text: text }] }
+                    ],
+                    systemInstruction: {
+                        parts: [{ text: systemInstructionText }]
+                    },
+                    generationConfig: { temperature: 0.3 }
+                };
+
+                const url = `${config.baseUrl.replace(/\/$/, "")}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+
+                try {
+                    const resp = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!resp.ok) {
+                        const errJson = await resp.json().catch(() => ({}));
+                        throw new Error(errJson.error?.message || `HTTP ${resp.status}`);
+                    }
+
+                    const data = await resp.json();
+                    const translatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+                    if (translatedText) {
+                        outputContainer.textContent = translatedText;
+                        statusText.textContent = "完成 (Gemini)";
+                        ttsBtn.disabled = false;
+                        copyBtn.disabled = false;
+                    } else {
+                        outputContainer.innerHTML = '<span style="color: var(--accent-red);">未能获取翻译结果</span>';
+                        statusText.textContent = "错误";
+                    }
+                } catch (e) {
+                    console.error("Text Translation Error:", e);
+                    outputContainer.innerHTML = `<span style="color: var(--accent-red);">翻译失败: ${e.message}</span>`;
+                    statusText.textContent = "失败";
+                    showToast(`❌ 文本翻译失败: ${e.message}`);
+                }
+            }
+        }
+
+        function speakTextOutput() {
+            const output = document.getElementById('textOutputContainer').textContent;
+            if (!output) return;
+
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(output);
+            const targetLang = document.getElementById('textTargetLang').value;
+            
+            if (targetLang === '한국어') utterance.lang = 'ko-KR';
+            else if (targetLang === 'English') utterance.lang = 'en-US';
+            else if (targetLang === '日本語') utterance.lang = 'ja-JP';
+            else if (targetLang === 'Français') utterance.lang = 'fr-FR';
+            else if (targetLang === 'Español') utterance.lang = 'es-ES';
+            else utterance.lang = 'zh-CN';
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function copyTextOutput() {
+            const output = document.getElementById('textOutputContainer').textContent;
+            if (!output) return;
+            navigator.clipboard.writeText(output).then(() => {
+                showToast("📋 翻译内容已成功复制！", "success");
+            });
+        }
+
+        // ══════════════════════════════════════
+        // ⛶ FULLSCREEN SUBTITLE MODE LOGIC (全屏大字幕模式)
+        // ══════════════════════════════════════
+        let currentSubFontSize = 18;
+
+        function toggleFullscreenSubtitles(forceState) {
+            const isCurrentlyFS = document.body.classList.contains('fullscreen-subtitles-active');
+            const targetState = (forceState !== undefined) ? forceState : !isCurrentlyFS;
+
+            if (targetState) {
+                // Ensure voice tab is active
+                const voiceTabBtn = document.querySelectorAll('.tab-btn')[0];
+                if (voiceTabBtn && !voiceTabBtn.classList.contains('active')) {
+                    switchTab('voice-tab', voiceTabBtn);
+                }
+
+                document.body.classList.add('fullscreen-subtitles-active');
+                updateFSFloatingBarState();
+
+                // Apply currently set font size
+                document.documentElement.style.setProperty('--sub-font-size', `${currentSubFontSize}px`);
+                const disp = document.getElementById('fsFontDisplay');
+                if (disp) disp.textContent = `${currentSubFontSize}px`;
+
+                showToast("💡 已铺满浏览器视口！方便与其它 App 分屏/切换，按 Esc 键可退出", "success");
+                setTimeout(dismissToast, 3500);
+            } else {
+                document.body.classList.remove('fullscreen-subtitles-active');
+            }
+        }
+
+        function adjustSubFontSize(delta) {
+            currentSubFontSize = Math.max(13, Math.min(32, currentSubFontSize + delta));
+            document.documentElement.style.setProperty('--sub-font-size', `${currentSubFontSize}px`);
+            const disp = document.getElementById('fsFontDisplay');
+            if (disp) disp.textContent = `${currentSubFontSize}px`;
+            const headerDisp = document.getElementById('headerFontVal');
+            if (headerDisp) headerDisp.textContent = `${currentSubFontSize}px`;
+            try { localStorage.setItem('gemini_sub_font_size', currentSubFontSize); } catch(e){}
+        }
+
+        function updateFSFloatingBarState() {
+            const fsDot = document.getElementById('fsStatusDot');
+            const fsText = document.getElementById('fsStatusText');
+            const fsToggleBtn = document.getElementById('fsListeningToggleBtn');
+
+            if (!fsDot || !fsText || !fsToggleBtn) return;
+
+            fsToggleBtn.disabled = false;
+
+            if (userIntentListening) {
+                fsDot.className = 'status-dot active';
+                fsText.textContent = '同传中';
+                fsToggleBtn.className = 'fs-control-btn btn-stop';
+                fsToggleBtn.innerHTML = '⏹️ 停止';
+            } else {
+                fsDot.className = 'status-dot';
+                fsText.textContent = '已暂停';
+                fsToggleBtn.className = 'fs-control-btn btn-start';
+                fsToggleBtn.innerHTML = '🎙️ 开始同传';
+            }
+        }
+
+        function toggleListeningFromFS() {
+            if (userIntentListening) {
+                stopVoiceInterpreting();
+            } else {
+                startVoiceInterpreting();
+            }
+            updateFSFloatingBarState();
+        }
+
+        // Global keydown listener for Esc key to exit fullscreen subtitle mode
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                if (document.body.classList.contains('fullscreen-subtitles-active')) {
+                    toggleFullscreenSubtitles(false);
+                }
+            }
+        });
+
+        // ══════════════════════════════════════
+        // 📜 SMART SCROLL & RETURN TO TOP (智能防打扰滚动 & 一键回顶)
+        // ══════════════════════════════════════
+        let isUserBrowsingHistory = false;
+        let unreadHistoryCount = 0;
+        let scrollTicking = false;
+
+        function flushPendingCardsToVoiceOutput() {
+            const pendingContainer = document.getElementById('pendingVoiceContainer');
+            const container = document.getElementById('voiceOutput');
+            if (!pendingContainer || !container) return;
+
+            // pendingContainer children are in order of arrival [card1, card2, ...]
+            // To preserve newest-at-top in voiceOutput:
+            // card1 should be below card2.
+            // Prepending card1 first, then card2:
+            // container has [card2, card1, olderCards...]
+            while (pendingContainer.firstChild) {
+                container.prepend(pendingContainer.firstChild);
+            }
+        }
+
+        function initSmartScrollListener() {
+            const container = document.getElementById('voiceOutput');
+            if (!container || container.dataset.scrollInited) return;
+            container.dataset.scrollInited = "true";
+
+            container.addEventListener('scroll', () => {
+                if (!scrollTicking) {
+                    window.requestAnimationFrame(() => {
+                        const scrollTop = container.scrollTop;
+                        // If user has scrolled down more than 40px, they are reading history!
+                        if (scrollTop > 40) {
+                            isUserBrowsingHistory = true;
+                            updateScrollFabVisibility(true);
+                        } else if (scrollTop <= 5) {
+                            // User is back at top - flush any pending cards
+                            flushPendingCardsToVoiceOutput();
+                            isUserBrowsingHistory = false;
+                            unreadHistoryCount = 0;
+                            updateScrollFabVisibility(false);
+                        }
+                        scrollTicking = false;
+                    });
+                    scrollTicking = true;
+                }
+            }, { passive: true });
+        }
+
+        function scrollToLatestSubtitles() {
+            const container = document.getElementById('voiceOutput');
+            if (!container) return;
+
+            flushPendingCardsToVoiceOutput();
+
+            container.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+
+            isUserBrowsingHistory = false;
+            unreadHistoryCount = 0;
+            updateScrollFabVisibility(false);
+        }
+
+        function updateScrollFabVisibility(visible) {
+            const fab = document.getElementById('scrollToLatestFab');
+            if (!fab) return;
+            if (visible) {
+                fab.classList.add('visible');
+                updateScrollFabBadge();
+            } else {
+                fab.classList.remove('visible');
+            }
+        }
+
+        function updateScrollFabBadge() {
+            const badge = document.getElementById('unreadSubCount');
+            if (!badge) return;
+            if (unreadHistoryCount > 0) {
+                badge.textContent = unreadHistoryCount > 99 ? '99+' : `${unreadHistoryCount} 条新字幕`;
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Initialize smart scroll listener
+        initSmartScrollListener();
+    </script>
+</body>
+</html>
