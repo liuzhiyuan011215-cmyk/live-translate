@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#f7f7f7">
-<title>🦖 Dino Run · 공룡 달리기</title>
+<title>🦖 공룡 달리기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -19,7 +19,7 @@
     transition: background .6s, color .6s;
   }
   body.night { background: #202124; color: #acacac; }
-  h1 { font-family: 'Press Start 2P', monospace; font-size: 18px; margin: 0 0 6px; letter-spacing: 1px; text-align: center; }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; letter-spacing: 1px; text-align: center; }
   .sub { font-size: 13px; opacity: .7; margin-bottom: 18px; text-align: center; line-height: 1.8; }
   #stage { width: 100%; max-width: 820px; position: relative; touch-action: none; cursor: pointer; }
   canvas { display: block; width: 100%; image-rendering: pixelated; transition: filter .6s; }
@@ -39,19 +39,19 @@
 </style>
 </head>
 <body>
-  <h1>🦖 DINO RUN</h1>
-  <div class="sub">공룡 달리기 · 恐龙跑酷</div>
+  <h1>🦖 공룡 달리기</h1>
+  <div class="sub">인터넷이 끊겼을 때 나오는 그 게임!</div>
 
   <div id="stage"><canvas id="game"></canvas></div>
 
   <div class="pad">
     <button class="duck" id="btnDuck">▼<br>숙이기</button>
-    <button class="jump" id="btnJump">▲<br>점프 JUMP</button>
+    <button class="jump" id="btnJump">▲<br>점프</button>
   </div>
 
   <div class="help">
     화면 탭 / SPACE / ↑ = 점프 (길게 누르면 더 높이)<br>
-    ↓ = 숙이기 · 点屏幕跳跃，长按跳更高，↓ 下蹲
+    ↓ = 숙이기 · 익룡은 숙여서 피하세요!
   </div>
   <div class="links">
     <a href="./">← 실시간 통역</a>
@@ -61,7 +61,7 @@
 <script>
 (() => {
   // ───────── Config ─────────
-  const W = innerWidth < 640 ? 440 : 600;   // 窄屏手机用更短视野，速度同比缩放
+  const W = innerWidth < 640 ? 440 : 600;   // 좁은 화면(모바일)은 시야를 줄이고 속도도 비례 축소
   const H = 200, GROUND = 178, P = 2, DINO_X = 36;
   const SF = W / 600;
   const START_SPEED = 360 * SF, MAX_SPEED = 820 * SF, ACCEL = 7 * SF;
@@ -162,7 +162,7 @@
   }
   addEventListener('resize', resize); resize();
 
-  // 所有方块都对齐到设备像素网格，避免非整数缩放时出现像素缝
+  // 모든 블록을 디바이스 픽셀 격자에 맞춰 픽셀 틈 방지
   const snap = v => Math.round(v * S) / S;
   function block(x, y, w, h) {
     const x0 = snap(x), y0 = snap(y);
@@ -174,7 +174,7 @@
       for (let c = 0; c < row.length; c++) {
         const ch = row[c];
         if (ch === ' ') continue;
-        let run = 1;   // 合并同色横向连续像素
+        let run = 1;   // 같은 색 가로 픽셀 병합
         while (row[c + run] === ch) run++;
         ctx.fillStyle = ch === 'o' ? BG : color;
         block(x + c * P, y + r * P, run * P, P);
@@ -358,24 +358,22 @@
     ctx.fillStyle = FG; ctx.textBaseline = 'top'; ctx.textAlign = 'right';
     ctx.font = '11px "Press Start 2P", monospace';
     const showScore = !(flashT > 0 && Math.floor(flashT * 8) % 2 === 0);
-    ctx.fillText((hi ? 'HI ' + pad5(hi) + '  ' : '') + (showScore ? pad5(score) : '     '), W - 10, 10);
+    ctx.fillText((hi ? '최고 ' + pad5(hi) + '  ' : '') + (showScore ? pad5(score) : '     '), W - 10, 10);
 
     ctx.textAlign = 'center';
     if (state === 'ready') {
-      ctx.font = '11px "Press Start 2P", monospace';
-      ctx.fillText('TAP TO START', W / 2, 70);
-      ctx.font = '13px sans-serif';
-      ctx.fillText('탭하여 시작 · 点击开始', W / 2, 92);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('화면을 탭하여 시작', W / 2, 78);
     } else if (state === 'over') {
-      ctx.font = '15px "Press Start 2P", monospace';
-      ctx.fillText('G A M E  O V E R', W / 2, 58);
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('게 임 오 버', W / 2, 56);
       // restart icon
       const cx = W / 2, cy = 102;
       ctx.strokeStyle = FG; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(cx, cy, 12, Math.PI * 0.25, Math.PI * 1.85); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx + 4, cy - 16); ctx.lineTo(cx + 14, cy - 10); ctx.lineTo(cx + 4, cy - 2); ctx.fill();
-      ctx.font = '12px sans-serif';
-      ctx.fillText('탭하여 다시 시작 · 点击重来', W / 2, 126);
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('탭하여 다시 시작', W / 2, 126);
     }
   }
 
