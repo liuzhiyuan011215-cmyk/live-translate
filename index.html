@@ -333,17 +333,36 @@
         @media (max-width: 768px) {
             .text-grid { grid-template-columns: 1fr; }
             #app-container { padding: 6px; height: 100dvh; }
-            header.app-header { flex-wrap: wrap; height: auto; min-height: 44px; padding: 6px 10px; gap: 6px; }
-            .header-center { order: 3; width: 100%; justify-content: space-around; margin-top: 4px; }
+            /* 手机端紧凑头部：第1行 = 状态 + 标签页；第2行 = 所有控制按钮单行横向滑动 */
+            header.app-header { flex-wrap: wrap; height: auto; min-height: 0; padding: 6px 8px; gap: 6px; margin-bottom: 6px; border-radius: 12px; }
+            .header-left { order: 1; gap: 6px; min-width: 0; }
+            .header-right { order: 2; margin-left: auto; }
+            .header-center {
+                order: 3; flex: 1 1 100%; width: 100%; min-width: 0;
+                flex-wrap: nowrap; justify-content: flex-start; gap: 6px; margin-top: 0;
+                overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; padding-bottom: 1px;
+            }
+            .header-center::-webkit-scrollbar { display: none; }
+            .header-center > * { flex-shrink: 0; }
             .logo-glow { width: 10px; height: 10px; }
-            .header-title { font-size: 15px; }
-            .tab-btn { font-size: 12px; padding: 8px 0; }
+            .header-title { font-size: 14px; }
+            .header-status { padding: 2px 7px; }
+            .tab-nav-compact .tab-btn, .tab-btn { font-size: 12px; padding: 5px 9px; }
+            .btn-compact { padding: 5px 10px !important; box-shadow: none !important; }
+            .compact-select { max-width: 96px; text-overflow: ellipsis; }
+            .compact-tool-btn { padding: 5px 8px; }
             .glass-panel { padding: 10px 12px; }
             .chat-bubble { padding: 10px 12px; border-radius: 12px; }
             .chat-bubble .tgt-text { font-size: 15px; }
             .fullscreen-floating-bar { padding: 4px 10px; gap: 8px; top: 8px; max-width: 96%; }
             .fs-control-btn { padding: 5px 9px; font-size: 11px; }
             body.fullscreen-subtitles-active #voiceOutput { padding: 50px 10px 20px 10px !important; }
+        }
+
+        @media (max-width: 480px) {
+            /* 窄屏手机：隐藏标题文字，保证 状态 + 三个标签 一行放下 */
+            .header-title { display: none; }
         }
 
         /* Shimmer thinking animation */
