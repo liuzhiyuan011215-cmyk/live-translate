@@ -504,46 +504,76 @@
   .rec-class .rc-note.warn { color: var(--warn); }
   .rec-empty { padding: 24px 12px; text-align: center; color: var(--text-3); font-size: 13px; }
 
+  .mobile-sub-left, .mobile-dock { display: none; }
   @media (max-width: 1120px) {
     .brand-name, .hide-md { display: none; }
     .course-name { width: 120px; }
   }
   @media (max-width: 920px) {
     html, body { width: 100%; max-width: 100vw; overflow-x: hidden; }
-    .app { width: 100%; max-width: 100%; overflow-x: hidden; }
+    .app { width: 100%; max-width: 100%; padding: 0 12px 10px; overflow-x: hidden; }
+    /* 顶部只留 1 行四等分对称导航栏，把空间全部让给下方字幕区 */
     .topbar {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 0 14px;
-      align-items: stretch;
+      display: block; padding: 8px 0 0; border-bottom: 0;
     }
-    .topbar-left, .topbar-right, .topbar-center { display: contents; }
-    .brand, #btnFocus { display: none; }
-    .topbar .status {
-      grid-column: 1; grid-row: 1; width: 100%; height: 38px; padding: 0 12px;
-      border-radius: 8px; justify-content: center; font-size: 13px; font-weight: 500;
-    }
-    .topbar .btn-toggle {
-      grid-column: 2; grid-row: 1; width: 100%; min-width: 0; height: 38px; padding: 0 12px;
-      border-radius: 8px; justify-content: center; font-size: 13.5px;
-    }
-    .topbar .course-name {
-      grid-column: 1; grid-row: 2; width: 100%; min-width: 0; height: 38px; padding: 0 10px;
-      border-radius: 8px; text-align: center; font-size: 12.5px;
-    }
-    .topbar-right .group {
-      grid-column: 2; grid-row: 2; width: 100%; min-width: 0; height: 38px; padding: 0 6px;
-      border-radius: 8px; justify-content: center; gap: 2px; font-size: 12px;
-    }
-    .topbar-right .group .detected { font-size: 12px; }
-    .topbar-right .group .arrow { margin: 0 1px; }
-    .topbar-right .group select.bare { min-width: 0; font-size: 12px; padding: 0 15px 0 2px; background-position: right 2px center; }
+    .topbar-left, .topbar-right { display: none; }
+    .topbar-center { width: 100%; }
     .topbar .tabs {
-      grid-column: 1 / -1; grid-row: 3; width: 100%;
-      grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px; border-radius: 9px;
+      width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 3px; border-radius: 9px;
     }
-    .tabs button { height: 32px; font-size: 13px; border-radius: 6px; }
+    .tabs button { height: 30px; padding: 0 6px; font-size: 12.5px; gap: 4px; border-radius: 6px; }
+    main { padding-top: 8px; }
+
+    /* 画布顶部极薄低频辅助栏：左（课程名 + 目标语言） | 右（字号 + 清空 + 导出） */
     .diptych::before { display: none; }
     .subbar-pane:first-child { display: none; }
     .subbar, .seg-body, .empty-card, .text-grid, .settings-grid, .rec-list, .row2 { grid-template-columns: 1fr; }
+    .subbar-pane { padding: 5px 10px; min-height: 38px; gap: 6px; }
+    .subbar-pane .pane-title { display: none; }
+    .mobile-sub-left {
+      display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0;
+    }
+    .mobile-sub-left .course-name {
+      width: 96px; flex: 0 1 108px; min-width: 64px; height: 26px; padding: 0 7px;
+      border-radius: 5px; font-size: 11.5px; background: var(--paper);
+    }
+    .mobile-sub-left .group {
+      height: 26px; padding: 0 3px 0 6px; border-radius: 5px; background: var(--paper);
+      font-size: 11.5px; gap: 1px; flex: none;
+    }
+    .mobile-sub-left .group .detected { display: none; }
+    .mobile-sub-left .group .arrow { margin: 0; font-size: 11px; }
+    .mobile-sub-left .group select.bare {
+      height: 22px; font-size: 11.5px; padding: 0 14px 0 3px; background-position: right 2px center;
+    }
+    .subbar-pane .pane-tools { gap: 3px; flex: none; }
+    .subbar-pane .font-group { height: 26px; background: var(--paper); }
+    .subbar-pane .font-group button { height: 20px; min-width: 22px; font-size: 11.5px; }
+    .subbar-pane .font-group .val { min-width: 18px; font-size: 11px; }
+    .subbar-pane .btn-ghost { height: 26px; width: 26px; padding: 0; }
+
+    /* 底部正中央黄金拇指主控胶囊（状态 + 开始/停止同传） */
+    .mobile-dock {
+      position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 5px 6px 5px 14px; border-radius: 999px;
+      background: color-mix(in srgb, var(--paper) 92%, transparent);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 10px 28px rgba(20, 20, 19, 0.14);
+      white-space: nowrap;
+    }
+    .mobile-dock .status {
+      height: 28px; padding: 0; border: 0; background: transparent !important;
+      font-size: 12.5px; font-weight: 500;
+    }
+    .mobile-dock .btn-toggle {
+      height: 36px; min-width: 122px; padding: 0 18px; border-radius: 999px; font-size: 13.5px;
+    }
+    .fab { bottom: 68px; }
+    .feed { padding-bottom: 84px; }
+
     .text-grid { grid-template-rows: 1fr 1fr; }
     .pane + .pane { border-left: 0; border-top: 1px solid var(--border); }
     .seg-col-src { padding: 14px 16px 4px; }
@@ -551,31 +581,24 @@
     .seg-tgt-bar { order: 2; margin: 8px 0 0; min-height: 0; }
     .seg-actions { opacity: 1; }
     .empty {
-      inset: 42px 0 0; overflow-y: auto; display: flex; flex-direction: column;
-      justify-content: flex-start; align-items: center; padding: 20px 16px;
+      inset: 38px 0 68px; overflow-y: auto; display: flex; flex-direction: column;
+      justify-content: flex-start; align-items: center; padding: 16px;
     }
-    .empty-card { max-width: 440px; margin: auto 0; }
+    .empty-card { max-width: 420px; margin: auto 0; }
     .empty-pane-left {
-      text-align: center; align-items: center; padding: 20px 12px 22px;
+      text-align: center; align-items: center; padding: 16px 12px 18px;
       border-bottom: 1px solid var(--border);
     }
-    .empty-pane-right { text-align: left; align-items: stretch; padding: 20px 8px 8px; }
+    .empty-pane-left .btn-toggle { display: none; }
+    .empty-pane-right { text-align: left; align-items: stretch; padding: 18px 8px 8px; }
     .empty h2 { font-size: 22px; margin-bottom: 8px; }
-    .empty p { font-size: 13px; margin-bottom: 16px; max-width: 300px; }
+    .empty p { font-size: 13px; margin-bottom: 0; max-width: 300px; }
     .tips { gap: 12px; max-width: 100%; }
     .tips li { font-size: 12.5px; line-height: 1.55; gap: 10px; }
     .rec-top-card { grid-template-columns: 1fr; gap: 12px; padding: 14px 16px; }
     .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; }
     .toolbar #engineChip { display: none; }
     .toolbar-right { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  }
-  @media (max-width: 640px) {
-    .app { padding: 0 14px 12px; }
-    .tabs button { padding: 0 6px; font-size: 12.5px; gap: 4px; }
-    main { padding-top: 12px; }
-    .subbar-pane { padding: 8px 14px; min-height: 42px; }
-    .pane-title { font-size: 13.5px; }
-    .pane-title small { display: none; }
     .pane-head { padding: 8px 14px; font-size: 13px; }
     .pane textarea, .output { padding: 12px 14px; font-size: 15px; }
     .card { padding: 14px; gap: 10px; }
@@ -647,8 +670,8 @@
       </nav>
     </div>
 
-    <div class="topbar-right">
-      <div class="group" title="源语言由模型自动识别；目标语言可随时切换（会自动重连）">
+    <div class="topbar-right" id="topbarRight">
+      <div class="group" id="langGroup" title="源语言由模型自动识别；目标语言可随时切换（会自动重连）">
         <span class="detected" id="detected">自动识别</span>
         <span class="arrow">→</span>
         <select class="bare" id="targetLang" aria-label="翻译成"></select>
@@ -674,6 +697,7 @@
           </div>
           <div class="subbar-pane">
             <span class="pane-title">同传译文 <small>Live Translation</small></span>
+            <div class="mobile-sub-left" id="mobileSubLeft"></div>
             <div class="pane-tools">
               <div class="group font-group" title="字幕字号">
                 <button data-font="-1" aria-label="缩小字号">A−</button><span class="val" data-font-val>20</span><button data-font="1" aria-label="放大字号">A+</button>
@@ -709,6 +733,13 @@
           </div>
         </div>
         <button class="fab" id="fab"><span data-icon="arrowUp"></span>回到最新<span class="count" id="fabCount"></span></button>
+        <div class="mobile-dock">
+          <div class="status" data-status data-phase="idle" role="status" aria-live="polite">
+            <span class="dot"></span><span class="status-text">未开始</span>
+            <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+          <button class="btn btn-primary btn-toggle" data-role="toggle"></button>
+        </div>
       </div>
     </section>
 
@@ -2874,6 +2905,24 @@
     setPhase('idle');
     renderEmpty();
     updateFab();
+
+    const mqMobile = matchMedia('(max-width: 920px)');
+    const topLeft = document.querySelector('.topbar-left');
+    const topRight = $('topbarRight');
+    const subLeft = $('mobileSubLeft');
+    const syncMobileBar = () => {
+      const cn = $('courseName');
+      if (mqMobile.matches) {
+        cn.placeholder = '课程名（自动）';
+        subLeft.append(cn, $('langGroup'));
+      } else {
+        cn.placeholder = '课程名（按课表自动）';
+        topLeft.append(cn);
+        topRight.prepend($('langGroup'));
+      }
+    };
+    mqMobile.addEventListener('change', syncMobileBar);
+    syncMobileBar();
 
     document.addEventListener('click', (e) => {
       const toggle = e.target.closest('[data-role="toggle"]');
