@@ -17,10 +17,8 @@
     var t = savedCfg.theme || 'light';
     if (t === 'auto') t = 'light'; // 默认采用 Anthropic 经典暖纸浅色，护眼且有设计感
     document.documentElement.dataset.theme = t;
-    document.documentElement.dataset.layout = savedCfg.layout || 'split';
   } catch (e) {
     document.documentElement.dataset.theme = 'light';
-    document.documentElement.dataset.layout = 'split';
   }
 </script>
 <style>
@@ -194,26 +192,20 @@
   .view { display: none; flex: 1; min-height: 0; flex-direction: column; position: relative; }
   .view.active { display: flex; }
 
-  /* ========== 同传主视图：左右对称双联画布（Two Parallel Pages，无碎盒子） ========== */
+  /* ========== 同传主视图：居中对称单页画布（无中缝竖线、无碎盒子） ========== */
   .diptych {
     flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative;
     background: var(--paper); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
   }
-  /* 贯穿双画布正中央的装订中轴线 */
-  .diptych::before {
-    content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px;
-    background: var(--border); pointer-events: none; z-index: 2;
-  }
-  :root[data-layout="stack"] .diptych::before { display: none; }
 
-  /* 双画布对称页眉：左页眉（原文控制） | 右页眉（译文控制），1:1 镜像对称 */
+  /* 单页对称页眉：左标题 | 右控制，干净利落 */
   .subbar {
-    display: grid; grid-template-columns: 1fr 1fr; align-items: center;
+    display: flex; align-items: center; justify-content: space-between;
     background: var(--surface); border-bottom: 1px solid var(--border); flex: none; z-index: 3;
   }
   .subbar-pane {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 9px 22px; min-height: 42px;
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 22px; min-height: 42px;
   }
   .pane-title {
     display: inline-flex; align-items: baseline; gap: 8px;
@@ -225,24 +217,12 @@
   }
   .pane-tools { display: flex; align-items: center; gap: 6px; }
 
-  .seg-switch {
-    display: inline-flex; gap: 2px; padding: 2px; border-radius: 5px;
-    background: var(--surface-2); border: 1px solid var(--border);
-  }
-  .seg-switch button {
-    height: 22px; padding: 0 8px; border: 0; border-radius: 3.5px; background: transparent;
-    color: var(--text-2); font-size: 11.5px; font-weight: 500;
-  }
-  .seg-switch button:hover { color: var(--text); }
-  .seg-switch button.active { background: var(--paper); color: var(--text); font-weight: 600; }
-
-  /* 连续篇章流：去掉所有独立小卡片外框，左页原文流、右页译文流水平对齐 */
+  /* 单页篇章流：上原文、下译文，居中对称宽幅排印 */
   .feed {
     flex: 1; min-height: 0; overflow-y: auto; padding: 0 0 88px;
     display: flex; flex-direction: column;
     scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   }
-  :root[data-layout="stack"] .feed { max-width: 880px; width: 100%; margin: 0 auto; }
 
   .seg {
     position: relative; flex: none;
@@ -255,19 +235,17 @@
   .seg.live { background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
   .seg.pinned { background: color-mix(in srgb, var(--pin) 6%, var(--paper)); }
 
-  .seg-body {
-    display: grid; grid-template-columns: 1fr 1fr; align-items: start;
+  .seg-col-src {
+    width: 100%; padding: 16px 22px 4px; min-width: 0; position: relative;
   }
-  .seg-col {
-    padding: 18px 26px; min-width: 0; position: relative;
+  .seg-col-tgt {
+    width: 100%; padding: 2px 22px 16px; min-width: 0; position: relative;
+    display: flex; flex-direction: column;
   }
-  :root[data-layout="stack"] .seg-body { grid-template-columns: 1fr; }
-  :root[data-layout="stack"] .seg-col-src { padding: 14px 26px 4px; }
-  :root[data-layout="stack"] .seg-col-tgt { padding: 2px 26px 14px; display: flex; flex-direction: column; }
-  :root[data-layout="stack"] .seg-tgt-bar { order: 2; margin: 8px 0 0; min-height: 0; }
+  .seg-tgt-bar { order: 2; margin: 8px 0 0; min-height: 0; }
   .seg.live .seg-tgt-bar, .seg-tgt-bar:empty { display: none; }
 
-  /* 段落眉标：左页显示时间与语种，右页平时隐去、悬停才显示操作药丸 */
+  /* 段落眉标 */
   .seg-meta {
     display: flex; align-items: center; gap: 7px; margin-bottom: 6px;
     font-size: 11.5px; color: var(--text-3);
@@ -281,7 +259,6 @@
 
   .seg-tgt-bar {
     display: flex; align-items: center; justify-content: flex-end; gap: 6px;
-    min-height: 22px; margin-bottom: 4px;
   }
   .seg-badge {
     border: 0; padding: 0 6px; border-radius: 4px; line-height: 18px; font-size: 11px;
@@ -316,24 +293,25 @@
   .seg.show-orig .seg-orig { display: block; }
   mark.fix { background: transparent; color: inherit; text-decoration: underline dotted var(--accent); text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: help; }
 
-  /* ---------- 双画布空状态：直接铺在左右对称书页上，无弹窗黑框 ---------- */
+  /* ---------- 单页居中对称空状态 ---------- */
   .empty {
     position: absolute; inset: 42px 0 0; display: grid; place-items: center;
     padding: 32px; pointer-events: none; z-index: 4;
   }
   .empty-card {
-    pointer-events: auto; width: 100%; max-width: 960px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    pointer-events: auto; width: 100%; max-width: 580px;
+    display: flex; flex-direction: column; align-items: center;
     background: var(--paper);
   }
   .empty-pane {
-    padding: 36px 40px; display: flex; flex-direction: column; justify-content: center;
+    width: 100%; display: flex; flex-direction: column; align-items: center;
   }
   .empty-pane-left {
-    text-align: right; align-items: flex-end; padding-right: 48px;
+    text-align: center; align-items: center; padding: 24px 24px 28px;
+    border-bottom: 1px solid var(--border);
   }
   .empty-pane-right {
-    text-align: left; align-items: flex-start; padding-left: 48px;
+    text-align: left; align-items: center; padding: 24px 24px 12px;
   }
   .empty-eyebrow {
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
@@ -343,10 +321,10 @@
     margin: 0 0 10px; color: var(--text); font-family: var(--serif);
     font-size: 28px; font-weight: 500; line-height: 1.25; letter-spacing: -0.015em;
   }
-  .empty p { margin: 0 0 22px; color: var(--text-2); font-size: 14px; line-height: 1.65; max-width: 340px; }
+  .empty p { margin: 0 0 22px; color: var(--text-2); font-size: 14px; line-height: 1.65; max-width: 420px; }
   .tips {
-    list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px;
-    width: 100%; max-width: 360px;
+    list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px;
+    width: 100%; max-width: 440px;
   }
   .tips li {
     display: flex; gap: 12px; align-items: flex-start; font-size: 13px; line-height: 1.55; color: var(--text-2);
@@ -357,7 +335,7 @@
   }
   .tips svg.i { display: none; }
   #emptyListening {
-    grid-template-columns: 1fr; text-align: center; place-items: center; padding: 48px 24px;
+    text-align: center; align-items: center; padding: 48px 24px;
     max-width: 460px; margin: 0 auto; background: var(--paper); border: 1px solid var(--border); border-radius: 10px;
   }
   .empty-icon { width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); }
@@ -526,9 +504,7 @@
     main { padding-top: 8px; }
 
     /* 画布顶部极薄低频辅助栏：左（课程名 + 目标语言） | 右（字号 + 清空 + 导出） */
-    .diptych::before { display: none; }
-    .subbar-pane:first-child { display: none; }
-    .subbar, .seg-body, .empty-card, .text-grid, .settings-grid, .rec-list, .row2 { grid-template-columns: 1fr; }
+    .text-grid, .settings-grid, .rec-list, .row2 { grid-template-columns: 1fr; }
     .subbar-pane { padding: 5px 10px; min-height: 38px; gap: 6px; }
     .subbar-pane .pane-title { display: none; }
     .mobile-sub-left {
@@ -682,21 +658,12 @@
   </header>
 
   <main>
-    <!-- 同传：左右对称双联画布（左原文页 | 右译文页） -->
+    <!-- 同传：居中对称单页画布 -->
     <section class="view active" id="view-live" role="tabpanel">
       <div class="diptych">
         <div class="subbar" id="liveControls">
           <div class="subbar-pane">
-            <span class="pane-title">原文流 <small>Source Stream</small></span>
-            <div class="pane-tools">
-              <div class="seg-switch" role="group" aria-label="字幕排版">
-                <button type="button" data-layout-btn="split" class="active">对称双页</button>
-                <button type="button" data-layout-btn="stack">单页合并</button>
-              </div>
-            </div>
-          </div>
-          <div class="subbar-pane">
-            <span class="pane-title">同传译文 <small>Live Translation</small></span>
+            <span class="pane-title">实时同传字幕 <small>Live Subtitles</small></span>
             <div class="mobile-sub-left" id="mobileSubLeft"></div>
             <div class="pane-tools">
               <div class="group font-group" title="字幕字号">
@@ -713,14 +680,14 @@
         <div class="empty" id="empty">
           <div class="empty-card" id="emptyIdle">
             <div class="empty-pane empty-pane-left">
-              <div class="empty-eyebrow">Bilingual Diptych</div>
+              <div class="empty-eyebrow">Live Interpretation</div>
               <h2>实时课堂同传</h2>
-              <p>点击下方按钮开启麦克风。左侧画布实时记录课堂原声识别，右侧画布同步排印中文同传译文。</p>
+              <p>点击下方按钮开启麦克风，实时识别课堂原声并同步排印同传译文。</p>
               <button class="btn btn-primary btn-toggle" data-role="toggle"></button>
             </div>
             <div class="empty-pane empty-pane-right">
               <ul class="tips">
-                <li><span class="tip-num">I.</span><span id="tipPause">讲话停顿约 1.5 秒自动分段，长句趁换气智能切分，左右双页严格对齐</span></li>
+                <li><span class="tip-num">I.</span><span id="tipPause">讲话停顿约 1.5 秒自动分段，长句趁换气智能切分，单页上下清晰对照</span></li>
                 <li><span class="tip-num">II.</span><span>鼠标轻移至任意段落，即可调用千问结合上下文一键「精校」专业术语</span></li>
                 <li><span class="tip-num">III.</span><span>后台每 5 分钟自动落盘录音与逐字稿，可随时切至「专注」模式听课</span></li>
               </ul>
@@ -729,7 +696,7 @@
           <div class="empty-card" id="emptyListening" hidden>
             <div class="empty-icon pulse"><span data-icon="mic"></span></div>
             <h2>正在聆听课堂原声…</h2>
-            <p>开口讲话后，左页原文与右页译文将同步展开。</p>
+            <p>开口讲话后，原文与同传译文将在当前画布同步展开。</p>
           </div>
         </div>
         <button class="fab" id="fab"><span data-icon="arrowUp"></span>回到最新<span class="count" id="fabCount"></span></button>
@@ -856,19 +823,13 @@
           </div>
 
           <div class="card">
-            <h3><span>外观与布局</span><small>Anthropic 暖纸风格与双联画布</small></h3>
-            <div class="row2">
-              <label class="field"><span>界面主题</span>
-                <select class="input" id="cfgTheme"><option value="light">浅色（Anthropic 暖纸）</option><option value="dark">深色（Anthropic 暖炭）</option><option value="auto">跟随系统</option></select>
-              </label>
-              <label class="field"><span>同传画布模式</span>
-                <select class="input" id="cfgLayout"><option value="split">左右对称双画布（左原文 · 右译文）</option><option value="stack">单画布合并流（上原文 · 下译文）</option></select>
-              </label>
-            </div>
+            <h3><span>外观与体验</span><small>Anthropic 暖纸风格 · 单页阅读流</small></h3>
+            <label class="field"><span>界面主题</span>
+              <select class="input" id="cfgTheme"><option value="light">浅色（Anthropic 暖纸）</option><option value="dark">深色（Anthropic 暖炭）</option><option value="auto">跟随系统</option></select>
+            </label>
             <small style="color:var(--text-3);line-height:1.55">
-              • <strong>左右对称双画布</strong>：告别零碎卡片框，左页原文流、右页译文流像摊开的对开书页一样并排呈现，每一段严格水平对齐。<br>
-              • <strong>单画布合并流</strong>：适合把窗口缩得很窄、与课件左右分屏时使用。<br>
-              • <strong>自动防超长</strong>：当老师连续讲话超过 25 秒或 120 字时，系统趁微小换气自动分段，保持左右两页对称平衡。
+              • <strong>单页居中展示</strong>：全屏单一完整画布，无中缝竖线割裂，每段上原文、下译文清晰对照。<br>
+              • <strong>自动防超长</strong>：当老师连续讲话超过 25 秒或 120 字时，系统趁微小换气自动分段，保持段落简短易读。
             </small>
           </div>
         </div>
@@ -2811,17 +2772,6 @@
   }
   mqLight.addEventListener('change', () => { if (cfg.theme === 'auto') applyTheme(); });
 
-  function setLayout(mode) {
-    cfg.layout = mode === 'stack' ? 'stack' : 'split';
-    document.documentElement.dataset.layout = cfg.layout;
-    for (const b of document.querySelectorAll('[data-layout-btn]')) {
-      b.classList.toggle('active', b.dataset.layoutBtn === cfg.layout);
-    }
-    const sel = $('cfgLayout');
-    if (sel) sel.value = cfg.layout;
-    saveConfig();
-  }
-
   function setSubSize(px) {
     cfg.subSize = Math.max(13, Math.min(44, Math.round(px)));
     document.documentElement.style.setProperty('--sub-size', cfg.subSize + 'px');
@@ -2844,7 +2794,7 @@
   }
 
   function updatePauseTip() {
-    $('tipPause').textContent = `讲话停顿约 ${cfg.pauseMs / 1000} 秒自动分段，长句趁换气智能切分，左右双页严格对齐`;
+    $('tipPause').textContent = `讲话停顿约 ${cfg.pauseMs / 1000} 秒自动分段，长句趁换气智能切分，单页上下清晰对照`;
   }
   function updateEngineChip() {
     $('engineChip').textContent = '千问 · ' + (cfg.qwenModel || DEFAULTS.qwenModel);
@@ -2855,7 +2805,7 @@
     geminiKey: 'cfgGeminiKey', geminiBase: 'cfgGeminiBase', liveModel: 'cfgLiveModel',
     outputMode: 'cfgOutputMode', pauseMs: 'cfgPause', echo: 'cfgEcho', autoFix: 'cfgAutoFix',
     qwenKey: 'cfgQwenKey', qwenBase: 'cfgQwenBase', qwenModel: 'cfgQwenModel',
-    systemPrompt: 'cfgSystemPrompt', theme: 'cfgTheme', layout: 'cfgLayout',
+    systemPrompt: 'cfgSystemPrompt', theme: 'cfgTheme',
     geminiKey2: 'cfgGeminiKey2', driveClient: 'cfgDriveClient',
   };
   function fillSettings() {
@@ -2898,7 +2848,6 @@
     $('koTone').hidden = cfg.textTarget !== 'ko';
 
     fillSettings();
-    setLayout(cfg.layout);
     setSubSize(cfg.subSize);
     updateEngineChip();
     updatePauseTip();
@@ -2931,8 +2880,6 @@
         else startLive();
         return;
       }
-      const lbtn = e.target.closest('[data-layout-btn]');
-      if (lbtn) { setLayout(lbtn.dataset.layoutBtn); return; }
       const font = e.target.closest('[data-font]');
       if (font) { setSubSize(cfg.subSize + Number(font.dataset.font)); return; }
       const action = e.target.closest('[data-action]');
@@ -2978,13 +2925,11 @@
     $('btnTextCopy').addEventListener('click', () => copyText($('textOutput').textContent));
 
     $('cfgTheme').addEventListener('change', (e) => { cfg.theme = e.target.value; applyTheme(); saveConfig(); });
-    $('cfgLayout').addEventListener('change', (e) => { setLayout(e.target.value); });
     $('btnSave').addEventListener('click', () => {
       const prev = cfg;
       cfg = readSettings();
       const ok = saveConfig();
       applyTheme();
-      setLayout(cfg.layout);
       applyOutputMode(prev);
       updateEngineChip();
       updatePauseTip();
